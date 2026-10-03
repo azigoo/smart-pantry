@@ -2,19 +2,18 @@ import { ProductListItem } from '@/components/ProductListItem';
 import { StatCard } from '@/components/StatCard';
 import { useAuth } from '@/context/AuthContext';
 import { useDespensa } from '@/context/DespensaContext';
-import { cerrarSesion } from '@/services/authService';
 import { colors } from '@/theme/colors';
 import { diasParaCaducar } from '@/theme/dates';
 import { type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function InicioScreen() {
-  const { usuario, firebaseListo } = useAuth();
-  const { productos, listaCompras, categorias } = useDespensa();
+  const { usuario } = useAuth();
+  const { productos, listaCompras, categorias, nombreUsuario } = useDespensa();
 
   const porVencer = useMemo(
     () => productos.filter((p) => diasParaCaducar(p.fechaCaducidad) <= 5).length,
@@ -36,34 +35,7 @@ export default function InicioScreen() {
   // Solo cuentan las categorías que tienen al menos un producto
   const categoriasActivas = categorias.filter((c) => c.cantidad > 0).length;
 
-  const nombreMostrado = usuario?.displayName || usuario?.email || 'Grisel';
-
-  async function ejecutarCierreDeSesion() {
-    await cerrarSesion();
-    router.replace('/(auth)/login');
-  }
-
-  function handleAvatarPress() {
-    if (!firebaseListo || !usuario) return;
-
-    if (Platform.OS === 'web') {
-      const confirmado =
-        typeof window !== 'undefined' && window.confirm('¿Quieres cerrar tu sesión?');
-      if (confirmado) {
-        ejecutarCierreDeSesion();
-      }
-      return;
-    }
-
-    Alert.alert('Cerrar sesión', '¿Quieres cerrar tu sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar sesión',
-        style: 'destructive',
-        onPress: ejecutarCierreDeSesion,
-      },
-    ]);
-  }
+  const nombreMostrado = nombreUsuario || usuario?.displayName || usuario?.email || 'Grisel';
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -73,12 +45,12 @@ export default function InicioScreen() {
             <Text style={styles.greeting}>Hola, {nombreMostrado}</Text>
             <Text style={styles.subtitle}>Resumen de tu despensa</Text>
           </View>
-          <Pressable style={styles.avatar} onPress={handleAvatarPress} hitSlop={8}>
-            <MaterialCommunityIcons
-              name={usuario && firebaseListo ? 'logout' : 'account'}
-              size={22}
-              color={colors.secondary}
-            />
+          <Pressable
+            style={styles.avatar}
+            onPress={() => router.push('/(tabs)/perfil' as any)}
+            hitSlop={8}
+          >
+            <MaterialCommunityIcons name="account" size={22} color={colors.secondary} />
           </Pressable>
         </View>
 
@@ -112,7 +84,10 @@ export default function InicioScreen() {
         )}
       </ScrollView>
 
-      <Pressable style={styles.fab} onPress={() => router.push('/producto/nuevo')}>
+      <Pressable
+        style={styles.fab}
+        onPress={() => router.push({ pathname: '/(tabs)/productos', params: { nuevo: '1' } } as any)}
+      >
         <MaterialCommunityIcons name="plus" size={26} color={colors.surface} />
       </Pressable>
     </SafeAreaView>

@@ -65,6 +65,15 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="account-outline" color={color} size={size} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

@@ -1,5 +1,6 @@
 import { type FirebaseApp, getApps, initializeApp } from 'firebase/app';
 import { type Auth, getAuth, initializeAuth } from 'firebase/auth';
+import { type Firestore, getFirestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
 // Todas las variables deben llevar el prefijo EXPO_PUBLIC_ para que Expo las
@@ -21,6 +22,7 @@ export function firebaseEstaConfigurado(): boolean {
 
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
+let db: Firestore | undefined;
 
 function getFirebaseApp(): FirebaseApp {
   if (!app) {
@@ -33,10 +35,6 @@ function getFirebaseApp(): FirebaseApp {
  * Devuelve la instancia de Firebase Auth, inicializándola con persistencia en
  * AsyncStorage para React Native (Android/iOS) y con la persistencia por
  * defecto del navegador en la versión web.
- *
- * Lanza un error explícito si el proyecto todavía no tiene configuradas las
- * variables de entorno de Firebase, en vez de fallar de forma confusa más
- * adelante.
  */
 export function getFirebaseAuth(): Auth {
   if (!firebaseEstaConfigurado()) {
@@ -65,4 +63,15 @@ export function getFirebaseAuth(): Auth {
   }
 
   return auth;
+}
+
+/** Devuelve la instancia de Firestore (base de datos `(default)`). */
+export function getFirebaseDb(): Firestore {
+  if (!firebaseEstaConfigurado()) {
+    throw new Error('Firebase no está configurado. Revisa tu archivo .env.');
+  }
+  if (!db) {
+    db = getFirestore(getFirebaseApp());
+  }
+  return db;
 }
