@@ -6,6 +6,8 @@ import { type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import {
   Alert,
   FlatList,
@@ -49,6 +51,7 @@ export default function ProductosScreen() {
   const [fecha, setFecha] = useState<Date>(new Date());
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [mostrarPicker, setMostrarPicker] = useState(false);
+  const { nuevo } = useLocalSearchParams<{ nuevo?: string }>();
 
   const productosFiltrados = useMemo(() => {
     if (!busqueda.trim()) return productos;
@@ -73,6 +76,13 @@ export default function ProductosScreen() {
     setMostrarPicker(false);
     setModalVisible(true);
   };
+  useEffect(() => {
+    if (nuevo === '1') {
+      abrirNuevo();
+      router.setParams({ nuevo: '' });
+    }
+  }, [nuevo]);
+
 
   const abrirEditar = (p: Producto) => {
     setEditandoId(String(p.id));
@@ -112,12 +122,12 @@ export default function ProductosScreen() {
         prev.map((p) =>
           String(p.id) === editandoId
             ? ({
-                ...p,
-                nombre: nombreLimpio,
-                cantidad: cantidadNum,
-                fechaCaducidad: fecha.toISOString(),
-                categoria: categoriaSel ?? categoriaDe(p),
-              } as Producto)
+              ...p,
+              nombre: nombreLimpio,
+              cantidad: cantidadNum,
+              fechaCaducidad: fecha.toISOString(),
+              categoria: categoriaSel ?? categoriaDe(p),
+            } as Producto)
             : p
         )
       );

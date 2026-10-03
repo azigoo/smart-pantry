@@ -9,6 +9,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { updateProfile } from 'firebase/auth';
 import { useMemo, useState } from 'react';
+import { enviarAvisoDePrueba } from '@/services/notificaciones';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -35,7 +36,15 @@ function aviso(titulo: string, mensaje: string) {
 
 export default function PerfilScreen() {
   const { usuario, firebaseListo } = useAuth();
-  const { productos, listaCompras, categorias, nombreUsuario, setNombreUsuario } = useDespensa();
+  const {
+    productos,
+    listaCompras,
+    categorias,
+    nombreUsuario,
+    setNombreUsuario,
+    diasAviso,
+    setDiasAviso,
+  } = useDespensa();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [nombreEdit, setNombreEdit] = useState('');
@@ -86,6 +95,15 @@ export default function PerfilScreen() {
     setNombreUsuario(null);
     await cerrarSesion();
     router.replace('/(auth)/login');
+  }
+  async function probarAviso() {
+    const ok = await enviarAvisoDePrueba();
+    aviso(
+      ok ? 'Aviso programado' : 'No disponible',
+      ok
+        ? 'Llegará en unos 5 segundos. Si quieres verlo, minimiza la app.'
+        : 'Las notificaciones no funcionan en la web ni en Expo Go para Android. Necesitas un development build.'
+    );
   }
 
   function confirmarCierre() {
@@ -142,6 +160,29 @@ export default function PerfilScreen() {
             <Text style={styles.statLabel}>Por comprar</Text>
           </View>
         </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Avisos de caducidad</Text>
+        <Text style={styles.hint}>Avisarme antes de que caduque un producto:</Text>
+        <View style={styles.chipsRow}>
+          {([1, 3, 7] as const).map((d) => {
+            const activo = diasAviso === d;
+            return (
+              <Pressable
+                key={d}
+                style={[styles.chip, activo && styles.chipActive]}
+                onPress={() => setDiasAviso(d)}
+              >
+                <Text style={[styles.chipText, activo && styles.chipTextActive]}>
+                  {d === 1 ? '1 día' : `${d} días`}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Pressable style={styles.testBtn} onPress={probarAviso}>
+          <MaterialCommunityIcons name="bell-ring-outline" size={18} color={colors.secondary} />
+          <Text style={styles.editText}>Probar aviso</Text>
+        </Pressable>
 
         {usuario && firebaseListo ? (
           <Pressable style={styles.logoutBtn} onPress={confirmarCierre}>
@@ -247,6 +288,28 @@ const styles = StyleSheet.create({
   },
   statValue: { ...type.h1, color: colors.ink },
   statLabel: { ...type.body, fontSize: 13, color: colors.inkMuted, marginTop: 2 },
+  hint: { ...type.body, color: colors.inkMuted, fontSize: 13, marginBottom: 10 },
+  chipsRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
+  chip: {
+    flex: 1,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipActive: { backgroundColor: colors.secondary, borderColor: colors.secondary },
+  chipText: { ...type.body, color: colors.ink },
+  chipTextActive: { color: colors.surface, fontWeight: '600' },
+  testBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingVertical: 8,
+  },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',

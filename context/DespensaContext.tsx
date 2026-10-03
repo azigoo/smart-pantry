@@ -1,11 +1,13 @@
 import { useAuth } from '@/context/AuthContext';
 import { firebaseEstaConfigurado, getFirebaseDb } from '@/services/firebase';
+import { programarAvisos } from '@/services/notificaciones';
 import {
   categorias as categoriasMock,
   listaCompras as listaMock,
   productos as productosMock,
 } from '@/theme/mockData';
 import type { ItemCompra } from '@/theme/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import {
   createContext,
@@ -22,6 +24,7 @@ export type Producto = (typeof productosMock)[number];
 type Categoria = (typeof categoriasMock)[number];
 
 export type CategoriaConConteo = Categoria & { cantidad: number };
+export type DiasAviso = 1 | 3 | 7;
 
 type DespensaContextValue = {
   productos: Producto[];
@@ -31,9 +34,13 @@ type DespensaContextValue = {
   categorias: CategoriaConConteo[];
   nombreUsuario: string | null;
   setNombreUsuario: React.Dispatch<React.SetStateAction<string | null>>;
+  diasAviso: DiasAviso;
+  setDiasAviso: (dias: DiasAviso) => void;
 };
 
 const DespensaContext = createContext<DespensaContextValue | null>(null);
+
+const CLAVE_DIAS_AVISO = 'diasAviso';
 
 // Ajusta esto si tu producto guarda la categoría con otro nombre de campo
 const categoriaDe = (p: Producto) => (p as any).categoria;
@@ -62,9 +69,25 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
     usaFirestore ? [] : listaMock
   );
   const [nombreUsuario, setNombreUsuario] = useState<string | null>(null);
+  const [diasAviso, setDiasAvisoState] = useState<DiasAviso>(3);
 
   const productosRef = useRef(productos);
   const listaRef = useRef(listaCompras);
+
+  // Recupera el tiempo de aviso guardado en este dispositivo
+  useEffect(() => {
+    AsyncStorage.getItem(CLAVE_DIAS_AVISO)
+      .then((valor) => {
+        const n = Number(valor);
+        if (n === 1 || n === 3 || n === 7) setDiasAvisoState(n);
+      })
+      .catch(() => {});
+  }, []);
+
+  const setDiasAviso = useCallback((dias: DiasAviso) => {
+    setDiasAvisoState(dias);
+    AsyncStorage.setItem(CLAVE_DIAS_AVISO, String(dias)).catch(() => {});
+  }, []);
 
   // Escucha en tiempo real los datos del usuario
   useEffect(() => {
@@ -109,6 +132,11 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       unsubLista();
     };
   }, [uid, usaFirestore]);
+
+  // Reprograma los avisos de caducidad cuando cambian los productos o el tiempo de aviso
+  useEffect(() => {
+    programarAvisos(productos as any[], diasAviso);
+  }, [productos, diasAviso]);
 
   // Compara la lista anterior con la nueva y guarda solo lo que cambió
   const sincronizar = useCallback(
@@ -186,8 +214,19 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       categorias,
       nombreUsuario,
       setNombreUsuario,
+      diasAviso,
+      setDiasAviso,
     }),
-    [productos, setProductos, listaCompras, setListaCompras, categorias, nombreUsuario]
+    [
+      productos,
+      setProductos,
+      listaCompras,
+      setListaCompras,
+      categorias,
+      nombreUsuario,
+      diasAviso,
+      setDiasAviso,
+    ]
   );
 
   return <DespensaContext.Provider value={value}>{children}</DespensaContext.Provider>;
