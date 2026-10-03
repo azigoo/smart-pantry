@@ -1,7 +1,7 @@
 import { AboutModal } from '@/components/AboutModal';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { TextField } from '@/components/TextField';
-import { iniciarSesion } from '@/services/authService';
+import { iniciarSesion, recuperarContrasena } from '@/services/authService';
 import { firebaseEstaConfigurado } from '@/services/firebase';
 import { colors } from '@/theme/colors';
 import { type } from '@/theme/typography';
@@ -27,6 +27,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [aboutVisible, setAboutVisible] = useState(false);
   const tapCount = useRef(0);
   const tapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,6 +50,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     setError(null);
+    setInfo(null);
 
     if (!firebaseEstaConfigurado()) {
       setError(
@@ -69,6 +71,33 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (err) {
       const mensaje = (err as { mensaje?: string })?.mensaje ?? 'No se pudo iniciar sesión.';
+      setError(mensaje);
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function handleRecuperar() {
+    setError(null);
+    setInfo(null);
+
+    if (!firebaseEstaConfigurado()) {
+      setError('Firebase todavía no está configurado en este proyecto.');
+      return;
+    }
+
+    if (!email.trim()) {
+      setError('Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".');
+      return;
+    }
+
+    try {
+      setCargando(true);
+      await recuperarContrasena(email);
+      setInfo('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña. Revisa también la carpeta de spam.');
+    } catch (err) {
+      const mensaje =
+        (err as { mensaje?: string })?.mensaje ?? 'No se pudo enviar el correo. Intenta de nuevo.';
       setError(mensaje);
     } finally {
       setCargando(false);
@@ -111,7 +140,17 @@ export default function LoginScreen() {
               editable={!cargando}
             />
 
+            <Pressable
+              onPress={handleRecuperar}
+              disabled={cargando}
+              hitSlop={8}
+              style={styles.forgotBtn}
+            >
+              <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
+            </Pressable>
+
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {info ? <Text style={styles.infoText}>{info}</Text> : null}
 
             <PrimaryButton
               label={cargando ? 'Iniciando sesión…' : 'Iniciar sesión'}
@@ -171,9 +210,18 @@ const styles = StyleSheet.create({
   form: {
     width: '100%',
   },
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+  },
   errorText: {
     ...type.caption,
     color: colors.danger,
+    marginBottom: 12,
+  },
+  infoText: {
+    ...type.caption,
+    color: colors.secondary,
     marginBottom: 12,
   },
   footerRow: {

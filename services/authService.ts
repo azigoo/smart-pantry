@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -68,6 +69,13 @@ export async function registrarUsuario(
 
 export async function cerrarSesion(): Promise<void> {
   await signOut(getFirebaseAuth());
+}
+export async function recuperarContrasena(email: string): Promise<void> {
+  try {
+    await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
+  } catch (error) {
+    throw traducirError(error);
+  }
 }
 
 export function suscribirseAEstadoDeAuth(callback: (user: User | null) => void) {
