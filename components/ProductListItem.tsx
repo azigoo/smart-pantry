@@ -31,7 +31,7 @@ export function ProductListItem({ producto, onPress }: Props) {
       <View style={{ flex: 1 }}>
         <Text style={type.h3}>{producto.nombre}</Text>
         <Text style={styles.meta}>
-          {producto.cantidad} {producto.unidad} · caduca {formatearFecha(producto.fechaCaducidad)}
+          {producto.cantidad}{producto.unidad ? ` ${producto.unidad}` : ''} · caduca {formatearFecha(producto.fechaCaducidad)}
         </Text>
       </View>
       {porVencer && (
