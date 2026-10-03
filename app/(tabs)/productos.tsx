@@ -40,7 +40,7 @@ const formatearFecha = (iso?: string) => {
 };
 
 export default function ProductosScreen() {
-  const { productos, setProductos, categorias } = useDespensa();
+  const { productos, setProductos, categorias, setListaCompras } = useDespensa();
   const [busqueda, setBusqueda] = useState('');
 
   // Estado del modal (agregar / editar)
@@ -159,7 +159,42 @@ export default function ProductosScreen() {
       { text: 'Eliminar', style: 'destructive', onPress: borrar },
     ]);
   };
+  const seAcabo = (p: Producto) => {
+    const mover = () => {
+      setListaCompras((prev) => {
+        const yaEsta = prev.some(
+          (i) => !i.comprado && i.nombre.trim().toLowerCase() === p.nombre.trim().toLowerCase()
+        );
+        if (yaEsta) return prev;
+        return [
+          {
+            id: Date.now().toString(),
+            nombre: p.nombre,
+            cantidad: String((p as any).cantidad ?? 1),
+            comprado: false,
+            categoria: categoriaDe(p),
+          } as unknown as (typeof prev)[number],
+          ...prev,
+        ];
+      });
+      setProductos((prev) => prev.filter((x) => x.id !== p.id));
+    };
 
+    if (Platform.OS === 'web') {
+      if (
+        typeof window !== 'undefined' &&
+        window.confirm(`"${p.nombre}" se acabó. ¿Pasarlo a la lista de compras?`)
+      ) {
+        mover();
+      }
+      return;
+    }
+
+    Alert.alert('Se acabó', `¿Pasar "${p.nombre}" a la lista de compras?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Pasar a compras', onPress: mover },
+    ]);
+  };
   const onCambioFecha = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') setMostrarPicker(false);
     if (event.type === 'set' && selected) setFecha(selected);
@@ -199,6 +234,9 @@ export default function ProductosScreen() {
           {!!estado && <Text style={[styles.cardStatus, { color: colorEstado }]}>{estado}</Text>}
         </View>
 
+        <Pressable style={styles.iconBtn} onPress={() => seAcabo(item)} hitSlop={8}>
+          <MaterialCommunityIcons name="cart-plus" size={22} color={colors.secondary} />
+        </Pressable>
         <Pressable style={styles.iconBtn} onPress={() => abrirEditar(item)} hitSlop={8}>
           <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.inkMuted} />
         </Pressable>
@@ -242,6 +280,7 @@ export default function ProductosScreen() {
           }
         />
       </View>
+
 
       <Pressable style={styles.fab} onPress={abrirNuevo}>
         <MaterialCommunityIcons name="plus" size={26} color={colors.surface} />

@@ -1,9 +1,10 @@
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { useDespensa } from '@/context/DespensaContext';
+import { useDespensa, type Producto } from '@/context/DespensaContext';
 import { colors } from '@/theme/colors';
 import type { ItemCompra } from '@/theme/types';
 import { type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useMemo, useState } from 'react';
 import {
   Alert,
@@ -12,6 +13,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +22,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const DANGER = '#C0392B';
+
+const idCategoria = (c: any): string => String(c.id ?? c.nombre);
+
+const formatearFecha = (d: Date) =>
+  d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 
 // Confirmación que funciona en web y en móvil
 function confirmar(titulo: string, mensaje: string, textoAccion: string, onConfirm: () => void) {
@@ -36,7 +43,12 @@ function confirmar(titulo: string, mensaje: string, textoAccion: string, onConfi
 }
 
 export default function ListaComprasScreen() {
-  const { listaCompras: items, setListaCompras: setItems } = useDespensa();
+  const {
+    listaCompras: items,
+    setListaCompras: setItems,
+    setProductos,
+    categorias,
+  } = useDespensa();
   const [nuevo, setNuevo] = useState('');
 
   // Modal de edición
@@ -44,6 +56,13 @@ export default function ListaComprasScreen() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState('');
   const [editCantidad, setEditCantidad] = useState('1');
+
+  // Modal de "comprado → despensa"
+  const [compraItem, setCompraItem] = useState<ItemCompra | null>(null);
+  const [compraCantidad, setCompraCantidad] = useState('1');
+  const [compraFecha, setCompraFecha] = useState<Date>(new Date());
+  const [compraCat, setCompraCat] = useState<string | null>(null);
+  const [mostrarPicker, setMostrarPicker] = useState(false);
 
   const pendientes = items.filter((i) => !i.comprado).length;
   const comprados = items.length - pendientes;
@@ -54,9 +73,66 @@ export default function ListaComprasScreen() {
     [items]
   );
 
-  function toggleItem(id: string) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, comprado: !i.comprado } : i)));
+  function marcarComprado(id: string, valor: boolean) {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, comprado: valor } : i)));
   }
+
+  // Al marcar como comprado se ofrece pasarlo a la despensa; al desmarcar solo se revierte
+  function toggleItem(item: ItemCompra) {
+    if (item.comprado) {
+      marcarComprado(item.id, false);
+      return;
+    }
+    const n = parseInt(String(item.cantidad), 10);
+    setCompraItem(item);
+    setCompraCantidad(Number.isNaN(n) || n < 1 ? '1' : String(n));
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + 7);
+    setCompraFecha(fecha);
+    const valor = (item as any).categoria;
+    const cat = categorias.find((c: any) => c.id === valor || c.nombre === valor);
+    setCompraCat(cat ? idCategoria(cat) : null);
+    setMostrarPicker(false);
+  }
+
+  function cerrarCompra() {
+    setCompraItem(null);
+    setMostrarPicker(false);
+  }
+
+  function soloMarcar() {
+    if (compraItem) marcarComprado(compraItem.id, true);
+    cerrarCompra();
+  }
+
+  function agregarADespensa() {
+    if (!compraItem) return;
+    const parsed = parseInt(compraCantidad, 10);
+    const cantidad = Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+
+    const producto = {
+      id: Date.now().toString(),
+      nombre: compraItem.nombre,
+      cantidad,
+      fechaCaducidad: compraFecha.toISOString(),
+      categoria: compraCat ?? undefined,
+    } as unknown as Producto;
+
+    setProductos((prev) => [producto, ...prev]);
+    marcarComprado(compraItem.id, true);
+    cerrarCompra();
+  }
+
+  function ajustarCompra(delta: number) {
+    const actual = parseInt(compraCantidad, 10);
+    const base = Number.isNaN(actual) ? 1 : actual;
+    setCompraCantidad(String(Math.max(1, base + delta)));
+  }
+
+  const onCambioFecha = (event: DateTimePickerEvent, selected?: Date) => {
+    if (Platform.OS === 'android') setMostrarPicker(false);
+    if (event.type === 'set' && selected) setCompraFecha(selected);
+  };
 
   function agregarItem() {
     const nombre = nuevo.trim();
@@ -115,7 +191,7 @@ export default function ListaComprasScreen() {
 
   const renderItem = ({ item }: { item: ItemCompra }) => (
     <View style={[styles.row, item.comprado && styles.rowDone]}>
-      <Pressable onPress={() => toggleItem(item.id)} hitSlop={8}>
+      <Pressable onPress={() => toggleItem(item)} hitSlop={8}>
         <MaterialCommunityIcons
           name={item.comprado ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
           size={26}
@@ -223,6 +299,91 @@ export default function ListaComprasScreen() {
                 <Text style={[styles.btnText, { color: colors.surface }]}>Guardar</Text>
               </Pressable>
             </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal comprado → despensa */}
+      <Modal
+        visible={compraItem !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={cerrarCompra}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={cerrarCompra} />
+          <View style={[styles.modalSheet, { maxHeight: '90%' }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>¿Agregar a tu despensa?</Text>
+              <Text style={styles.subtle}>{compraItem?.nombre}</Text>
+
+              <Text style={styles.label}>Cantidad</Text>
+              <View style={styles.qtyRow}>
+                <Pressable style={styles.qtyBtn} onPress={() => ajustarCompra(-1)}>
+                  <MaterialCommunityIcons name="minus" size={22} color={colors.ink} />
+                </Pressable>
+                <TextInput
+                  value={compraCantidad}
+                  onChangeText={(t) => setCompraCantidad(t.replace(/[^0-9]/g, ''))}
+                  keyboardType="numeric"
+                  placeholder="1"
+                  placeholderTextColor={colors.inkMuted}
+                  style={[styles.input, styles.qtyInput]}
+                />
+                <Pressable style={styles.qtyBtn} onPress={() => ajustarCompra(1)}>
+                  <MaterialCommunityIcons name="plus" size={22} color={colors.ink} />
+                </Pressable>
+              </View>
+
+              <Text style={styles.label}>Categoría</Text>
+              <View style={styles.chips}>
+                {categorias.map((c: any) => {
+                  const id = idCategoria(c);
+                  const activa = compraCat === id;
+                  return (
+                    <Pressable
+                      key={id}
+                      style={[styles.chip, activa && styles.chipActive]}
+                      onPress={() => setCompraCat(activa ? null : id)}
+                    >
+                      <Text style={[styles.chipText, activa && styles.chipTextActive]}>
+                        {c.nombre}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.label}>Fecha de caducidad</Text>
+              <Pressable
+                style={[styles.input, styles.dateInput]}
+                onPress={() => setMostrarPicker((v) => !v)}
+              >
+                <MaterialCommunityIcons name="calendar" size={20} color={colors.inkMuted} />
+                <Text style={styles.dateText}>{formatearFecha(compraFecha)}</Text>
+              </Pressable>
+
+              {mostrarPicker && (
+                <DateTimePicker
+                  value={compraFecha}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onCambioFecha}
+                />
+              )}
+
+              <View style={styles.modalActions}>
+                <Pressable style={[styles.btn, styles.btnGhost]} onPress={soloMarcar}>
+                  <Text style={[styles.btnText, { color: colors.ink }]}>Solo marcar</Text>
+                </Pressable>
+                <Pressable style={[styles.btn, styles.btnPrimary]} onPress={agregarADespensa}>
+                  <Text style={[styles.btnText, { color: colors.surface }]}>Agregar</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -345,7 +506,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: colors.ink,
-    marginBottom: 16,
+    marginBottom: 4,
+  },
+  subtle: {
+    ...type.body,
+    color: colors.inkMuted,
+    marginBottom: 8,
   },
   label: {
     ...type.body,
@@ -363,6 +529,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: 14,
     height: 48,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateText: {
+    ...type.body,
+    color: colors.ink,
   },
   qtyRow: {
     flexDirection: 'row',
@@ -382,6 +557,32 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipActive: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  chipText: {
+    ...type.body,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  chipTextActive: {
+    color: colors.surface,
+    fontWeight: '600',
   },
   modalActions: {
     flexDirection: 'row',
