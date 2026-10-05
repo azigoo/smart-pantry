@@ -2,12 +2,12 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useDespensa, type Producto } from '@/context/DespensaContext';
 import { colors } from '@/theme/colors';
 import { diasParaCaducar } from '@/theme/dates';
+import { aClave, desdeClave } from '@/theme/fechaLocal';
 import { type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useMemo, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -29,10 +29,11 @@ const WARNING = '#E67E22';
 // Ajusta si tu producto/categoría usa otros nombres de campo
 const categoriaDe = (p: Producto): string | undefined => (p as any).categoria;
 const idCategoria = (c: any): string => String(c.id ?? c.nombre);
+const UNIDADES = ['pzas', 'kg', 'litros'] as const;
 
-const formatearFecha = (iso?: string) => {
-  if (!iso) return 'Sin fecha';
-  return new Date(iso).toLocaleDateString('es-MX', {
+const formatearFecha = (clave?: string) => {
+  if (!clave) return 'Sin fecha';
+  return desdeClave(clave).toLocaleDateString('es-MX', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -41,6 +42,7 @@ const formatearFecha = (iso?: string) => {
 
 export default function ProductosScreen() {
   const { productos, setProductos, categorias, setListaCompras } = useDespensa();
+  const { nuevo } = useLocalSearchParams<{ nuevo?: string }>();
   const [busqueda, setBusqueda] = useState('');
 
   // Estado del modal (agregar / editar)
@@ -48,10 +50,10 @@ export default function ProductosScreen() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nombre, setNombre] = useState('');
   const [cantidad, setCantidad] = useState('1');
+  const [unidad, setUnidad] = useState<string>('pzas');
   const [fecha, setFecha] = useState<Date>(new Date());
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [mostrarPicker, setMostrarPicker] = useState(false);
-  const { nuevo } = useLocalSearchParams<{ nuevo?: string }>();
 
   const productosFiltrados = useMemo(() => {
     if (!busqueda.trim()) return productos;
@@ -71,11 +73,13 @@ export default function ProductosScreen() {
     setEditandoId(null);
     setNombre('');
     setCantidad('1');
+    setUnidad('pzas');
     setFecha(new Date());
     setCategoriaSel(null);
     setMostrarPicker(false);
     setModalVisible(true);
   };
+
   useEffect(() => {
     if (nuevo === '1') {
       abrirNuevo();
@@ -83,12 +87,12 @@ export default function ProductosScreen() {
     }
   }, [nuevo]);
 
-
   const abrirEditar = (p: Producto) => {
     setEditandoId(String(p.id));
     setNombre(p.nombre);
     setCantidad(String((p as any).cantidad ?? 1));
-    setFecha(p.fechaCaducidad ? new Date(p.fechaCaducidad) : new Date());
+    setUnidad((p as any).unidad ?? 'pzas');
+    setFecha(p.fechaCaducidad ? desdeClave(p.fechaCaducidad) : new Date());
     const valor = categoriaDe(p);
     const cat = categorias.find((c: any) => c.id === valor || c.nombre === valor);
     setCategoriaSel(cat ? idCategoria(cat) : null);
@@ -122,24 +126,26 @@ export default function ProductosScreen() {
         prev.map((p) =>
           String(p.id) === editandoId
             ? ({
-              ...p,
-              nombre: nombreLimpio,
-              cantidad: cantidadNum,
-              fechaCaducidad: fecha.toISOString(),
-              categoria: categoriaSel ?? categoriaDe(p),
-            } as Producto)
+                ...p,
+                nombre: nombreLimpio,
+                cantidad: cantidadNum,
+                unidad,
+                fechaCaducidad: aClave(fecha),
+                categoria: categoriaSel ?? categoriaDe(p),
+              } as Producto)
             : p
         )
       );
     } else {
-      const nuevo = {
+      const nuevoProducto = {
         id: Date.now().toString(),
         nombre: nombreLimpio,
         cantidad: cantidadNum,
-        fechaCaducidad: fecha.toISOString(),
+        unidad,
+        fechaCaducidad: aClave(fecha),
         categoria: categoriaSel ?? undefined,
       } as unknown as Producto;
-      setProductos((prev) => [nuevo, ...prev]);
+      setProductos((prev) => [nuevoProducto, ...prev]);
     }
     cerrarModal();
   };
@@ -159,6 +165,7 @@ export default function ProductosScreen() {
       { text: 'Eliminar', style: 'destructive', onPress: borrar },
     ]);
   };
+
   const seAcabo = (p: Producto) => {
     const mover = () => {
       setListaCompras((prev) => {
@@ -171,6 +178,7 @@ export default function ProductosScreen() {
             id: Date.now().toString(),
             nombre: p.nombre,
             cantidad: String((p as any).cantidad ?? 1),
+            unidad: (p as any).unidad ?? 'pzas',
             comprado: false,
             categoria: categoriaDe(p),
           } as unknown as (typeof prev)[number],
@@ -195,6 +203,7 @@ export default function ProductosScreen() {
       { text: 'Pasar a compras', onPress: mover },
     ]);
   };
+
   const onCambioFecha = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') setMostrarPicker(false);
     if (event.type === 'set' && selected) setFecha(selected);
@@ -221,13 +230,15 @@ export default function ProductosScreen() {
     }
 
     const cat = nombreCategoria(item);
+    const cant = (item as any).cantidad;
+    const uni = (item as any).unidad;
 
     return (
       <Pressable style={styles.card} onPress={() => abrirEditar(item)}>
         <View style={styles.cardInfo}>
           <Text style={styles.cardTitle}>
             {item.nombre}
-            {(item as any).cantidad ? `  ×${(item as any).cantidad}` : ''}
+            {cant ? `  ×${cant}${uni ? ` ${uni}` : ''}` : ''}
           </Text>
           {!!cat && <Text style={styles.cardCategory}>{cat}</Text>}
           <Text style={styles.cardDate}>{formatearFecha(item.fechaCaducidad)}</Text>
@@ -281,7 +292,6 @@ export default function ProductosScreen() {
         />
       </View>
 
-
       <Pressable style={styles.fab} onPress={abrirNuevo}>
         <MaterialCommunityIcons name="plus" size={26} color={colors.surface} />
       </Pressable>
@@ -326,6 +336,22 @@ export default function ProductosScreen() {
                 </Pressable>
               </View>
 
+              <Text style={styles.label}>Unidad</Text>
+              <View style={styles.chips}>
+                {UNIDADES.map((u) => {
+                  const activa = unidad === u;
+                  return (
+                    <Pressable
+                      key={u}
+                      style={[styles.chip, activa && styles.chipActive]}
+                      onPress={() => setUnidad(u)}
+                    >
+                      <Text style={[styles.chipText, activa && styles.chipTextActive]}>{u}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <Text style={styles.label}>Categoría</Text>
               <View style={styles.chips}>
                 {categorias.map((c: any) => {
@@ -351,7 +377,7 @@ export default function ProductosScreen() {
                 onPress={() => setMostrarPicker((v) => !v)}
               >
                 <MaterialCommunityIcons name="calendar" size={20} color={colors.inkMuted} />
-                <Text style={styles.dateText}>{formatearFecha(fecha.toISOString())}</Text>
+                <Text style={styles.dateText}>{formatearFecha(aClave(fecha))}</Text>
               </Pressable>
 
               {mostrarPicker && (

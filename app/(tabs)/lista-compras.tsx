@@ -1,6 +1,7 @@
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useDespensa, type Producto } from '@/context/DespensaContext';
 import { colors } from '@/theme/colors';
+import { aClave } from '@/theme/fechaLocal';
 import type { ItemCompra } from '@/theme/types';
 import { type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -114,7 +115,8 @@ export default function ListaComprasScreen() {
       id: Date.now().toString(),
       nombre: compraItem.nombre,
       cantidad,
-      fechaCaducidad: compraFecha.toISOString(),
+      unidad: (compraItem as any).unidad ?? 'pzas',
+      fechaCaducidad: aClave(compraFecha),
       categoria: compraCat ?? undefined,
     } as unknown as Producto;
 
@@ -189,29 +191,35 @@ export default function ListaComprasScreen() {
     setEditCantidad(String(Math.max(1, base + delta)));
   }
 
-  const renderItem = ({ item }: { item: ItemCompra }) => (
-    <View style={[styles.row, item.comprado && styles.rowDone]}>
-      <Pressable onPress={() => toggleItem(item)} hitSlop={8}>
-        <MaterialCommunityIcons
-          name={item.comprado ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
-          size={26}
-          color={item.comprado ? colors.secondary : colors.inkMuted}
-        />
-      </Pressable>
+  const renderItem = ({ item }: { item: ItemCompra }) => {
+    const unidad = (item as any).unidad as string | undefined;
+    return (
+      <View style={[styles.row, item.comprado && styles.rowDone]}>
+        <Pressable onPress={() => toggleItem(item)} hitSlop={8}>
+          <MaterialCommunityIcons
+            name={item.comprado ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+            size={26}
+            color={item.comprado ? colors.secondary : colors.inkMuted}
+          />
+        </Pressable>
 
-      <Pressable style={styles.rowInfo} onPress={() => abrirEditar(item)}>
-        <Text style={[styles.rowTitle, item.comprado && styles.rowTitleDone]}>{item.nombre}</Text>
-        <Text style={styles.rowQty}>Cantidad: {item.cantidad}</Text>
-      </Pressable>
+        <Pressable style={styles.rowInfo} onPress={() => abrirEditar(item)}>
+          <Text style={[styles.rowTitle, item.comprado && styles.rowTitleDone]}>{item.nombre}</Text>
+          <Text style={styles.rowQty}>
+            Cantidad: {item.cantidad}
+            {unidad ? ` ${unidad}` : ''}
+          </Text>
+        </Pressable>
 
-      <Pressable style={styles.iconBtn} onPress={() => abrirEditar(item)} hitSlop={8}>
-        <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.inkMuted} />
-      </Pressable>
-      <Pressable style={styles.iconBtn} onPress={() => eliminarItem(item)} hitSlop={8}>
-        <MaterialCommunityIcons name="trash-can-outline" size={22} color={DANGER} />
-      </Pressable>
-    </View>
-  );
+        <Pressable style={styles.iconBtn} onPress={() => abrirEditar(item)} hitSlop={8}>
+          <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.inkMuted} />
+        </Pressable>
+        <Pressable style={styles.iconBtn} onPress={() => eliminarItem(item)} hitSlop={8}>
+          <MaterialCommunityIcons name="trash-can-outline" size={22} color={DANGER} />
+        </Pressable>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
