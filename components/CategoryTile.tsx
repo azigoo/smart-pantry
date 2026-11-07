@@ -24,7 +24,7 @@ export function CategoryTile({ categoria, count, onPress }: Props) {
       onPress={onPress}
       style={({ pressed }) => [styles.tile, { backgroundColor: palette.bg }, pressed && { opacity: 0.8 }]}
     >
-      <MaterialCommunityIcons name={categoria.icono as any} size={26} color={palette.text} />
+      <MaterialCommunityIcons name={categoria.icono} size={26} color={palette.text} />
       <Text style={[type.bodyMedium, { color: palette.text }]}>{categoria.nombre}</Text>
       {typeof count === 'number' && (
         <Text style={[type.caption, { color: palette.text }]}>{count} productos</Text>

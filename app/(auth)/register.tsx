@@ -1,10 +1,12 @@
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
-import { registrarUsuario } from '@/services/authService';
+import { useAuth } from '@/context/AuthContext';
+import { esErrorAutenticacion, registrarUsuario } from '@/services/authService';
 import { firebaseEstaConfigurado } from '@/services/firebase';
 import { colors } from '@/theme/colors';
 import { type } from '@/theme/typography';
+import { validarRegistro } from '@/theme/validators';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -20,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RegisterScreen() {
+  const { errorAutenticacion } = useAuth();
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,8 +40,9 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (!nombre.trim() || !email.trim() || !password) {
-      setError('Completa nombre, correo y contraseña.');
+    const validacion = validarRegistro({ nombre, correo: email, contrasena: password });
+    if (!validacion.valido) {
+      setError(validacion.errores.join(' '));
       return;
     }
 
@@ -47,7 +51,9 @@ export default function RegisterScreen() {
       await registrarUsuario(nombre, email, password);
       router.replace('/(tabs)');
     } catch (err) {
-      const mensaje = (err as { mensaje?: string })?.mensaje ?? 'No se pudo crear la cuenta.';
+      const mensaje = esErrorAutenticacion(err)
+        ? err.mensaje
+        : 'No se pudo crear la cuenta. Intenta de nuevo.';
       setError(mensaje);
     } finally {
       setCargando(false);
@@ -93,7 +99,9 @@ export default function RegisterScreen() {
             editable={!cargando}
           />
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error || errorAutenticacion ? (
+            <Text style={styles.errorText}>{error ?? errorAutenticacion}</Text>
+          ) : null}
 
           <PrimaryButton
             label={cargando ? 'Creando cuenta…' : 'Crear cuenta'}

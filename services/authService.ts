@@ -7,8 +7,10 @@ import {
   updateProfile,
   type User,
   type UserCredential,
+  type Unsubscribe,
 } from 'firebase/auth';
 import { getFirebaseAuth } from './firebase';
+import { logger } from './logger';
 
 export type ErrorAutenticacion = {
   codigo: string;
@@ -32,11 +34,27 @@ const MENSAJES_DE_ERROR: Record<string, string> = {
 };
 
 function traducirError(error: unknown): ErrorAutenticacion {
-  const codigo = (error as { code?: string })?.code ?? 'auth/desconocido';
+  const codigo =
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+      ? error.code
+      : 'auth/desconocido';
+  logger.error('Autenticación', error);
   return {
     codigo,
     mensaje: MENSAJES_DE_ERROR[codigo] ?? 'Ocurrió un error inesperado. Intenta de nuevo.',
   };
+}
+
+export function esErrorAutenticacion(error: unknown): error is ErrorAutenticacion {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'mensaje' in error &&
+    typeof error.mensaje === 'string'
+  );
 }
 
 export async function iniciarSesion(email: string, password: string): Promise<UserCredential> {
@@ -68,7 +86,11 @@ export async function registrarUsuario(
 }
 
 export async function cerrarSesion(): Promise<void> {
-  await signOut(getFirebaseAuth());
+  try {
+    await signOut(getFirebaseAuth());
+  } catch (error) {
+    throw traducirError(error);
+  }
 }
 export async function recuperarContrasena(email: string): Promise<void> {
   try {
@@ -78,6 +100,9 @@ export async function recuperarContrasena(email: string): Promise<void> {
   }
 }
 
-export function suscribirseAEstadoDeAuth(callback: (user: User | null) => void) {
-  return onAuthStateChanged(getFirebaseAuth(), callback);
+export function suscribirseAEstadoDeAuth(
+  callback: (user: User | null) => void,
+  onError: (error: Error) => void,
+): Unsubscribe {
+  return onAuthStateChanged(getFirebaseAuth(), callback, onError);
 }

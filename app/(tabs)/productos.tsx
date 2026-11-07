@@ -1,9 +1,12 @@
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useDespensa, type Producto } from '@/context/DespensaContext';
+import { ErrorMessage } from '@/components/ErrorMessage';
 import { colors } from '@/theme/colors';
 import { diasParaCaducar } from '@/theme/dates';
 import { aClave, desdeClave } from '@/theme/fechaLocal';
 import { type } from '@/theme/typography';
+import type { Category, CategoryId } from '@/theme/types';
+import { validarNuevoProducto } from '@/theme/validators';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -26,9 +29,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const DANGER = '#C0392B';
 const WARNING = '#E67E22';
 
-// Ajusta si tu producto/categoría usa otros nombres de campo
-const categoriaDe = (p: Producto): string | undefined => (p as any).categoria;
-const idCategoria = (c: any): string => String(c.id ?? c.nombre);
+const idCategoria = (categoria: Category): CategoryId => categoria.id;
 const UNIDADES = ['pzas', 'kg', 'litros'] as const;
 
 const formatearFecha = (clave?: string) => {
@@ -41,7 +42,7 @@ const formatearFecha = (clave?: string) => {
 };
 
 export default function ProductosScreen() {
-  const { productos, setProductos, categorias, setListaCompras } = useDespensa();
+  const { productos, setProductos, categorias, setListaCompras, errorDatos } = useDespensa();
   const { nuevo } = useLocalSearchParams<{ nuevo?: string }>();
   const [busqueda, setBusqueda] = useState('');
 
@@ -52,8 +53,9 @@ export default function ProductosScreen() {
   const [cantidad, setCantidad] = useState('1');
   const [unidad, setUnidad] = useState<string>('pzas');
   const [fecha, setFecha] = useState<Date>(new Date());
-  const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
+  const [categoriaSel, setCategoriaSel] = useState<CategoryId | null>(null);
   const [mostrarPicker, setMostrarPicker] = useState(false);
+  const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
 
   const productosFiltrados = useMemo(() => {
     if (!busqueda.trim()) return productos;
@@ -63,10 +65,7 @@ export default function ProductosScreen() {
   }, [busqueda, productos]);
 
   const nombreCategoria = (p: Producto) => {
-    const valor = categoriaDe(p);
-    if (!valor) return null;
-    const cat = categorias.find((c: any) => c.id === valor || c.nombre === valor) as any;
-    return cat?.nombre ?? null;
+    return categorias.find((categoria) => categoria.id === p.categoria)?.nombre ?? null;
   };
 
   const abrirNuevo = () => {
@@ -77,6 +76,7 @@ export default function ProductosScreen() {
     setFecha(new Date());
     setCategoriaSel(null);
     setMostrarPicker(false);
+    setErrorFormulario(null);
     setModalVisible(true);
   };
 
@@ -90,13 +90,13 @@ export default function ProductosScreen() {
   const abrirEditar = (p: Producto) => {
     setEditandoId(String(p.id));
     setNombre(p.nombre);
-    setCantidad(String((p as any).cantidad ?? 1));
-    setUnidad((p as any).unidad ?? 'pzas');
+    setCantidad(String(p.cantidad));
+    setUnidad(p.unidad);
     setFecha(p.fechaCaducidad ? desdeClave(p.fechaCaducidad) : new Date());
-    const valor = categoriaDe(p);
-    const cat = categorias.find((c: any) => c.id === valor || c.nombre === valor);
+    const cat = categorias.find((categoria) => categoria.id === p.categoria);
     setCategoriaSel(cat ? idCategoria(cat) : null);
     setMostrarPicker(false);
+    setErrorFormulario(null);
     setModalVisible(true);
   };
 
@@ -112,14 +112,16 @@ export default function ProductosScreen() {
   };
 
   const guardar = () => {
-    const nombreLimpio = nombre.trim();
-    if (!nombreLimpio) {
-      Alert.alert('Falta el nombre', 'Escribe el nombre del producto.');
+    const fechaTexto = aClave(fecha).split('-').reverse().join('/');
+    const validacion = validarNuevoProducto({ nombre, cantidad, fecha: fechaTexto });
+    if (!validacion.valido) {
+      setErrorFormulario(validacion.errores.join(' '));
       return;
     }
 
-    const parsed = parseInt(cantidad, 10);
-    const cantidadNum = Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    setErrorFormulario(null);
+    const nombreLimpio = nombre.trim();
+    const cantidadNum = Number(cantidad);
 
     if (editandoId) {
       setProductos((prev) =>
@@ -131,8 +133,8 @@ export default function ProductosScreen() {
                 cantidad: cantidadNum,
                 unidad,
                 fechaCaducidad: aClave(fecha),
-                categoria: categoriaSel ?? categoriaDe(p),
-              } as Producto)
+                categoria: categoriaSel ?? p.categoria,
+              })
             : p
         )
       );
@@ -144,7 +146,7 @@ export default function ProductosScreen() {
         unidad,
         fechaCaducidad: aClave(fecha),
         categoria: categoriaSel ?? undefined,
-      } as unknown as Producto;
+      };
       setProductos((prev) => [nuevoProducto, ...prev]);
     }
     cerrarModal();
@@ -177,11 +179,11 @@ export default function ProductosScreen() {
           {
             id: Date.now().toString(),
             nombre: p.nombre,
-            cantidad: String((p as any).cantidad ?? 1),
-            unidad: (p as any).unidad ?? 'pzas',
+            cantidad: String(p.cantidad),
+            unidad: p.unidad,
             comprado: false,
-            categoria: categoriaDe(p),
-          } as unknown as (typeof prev)[number],
+            categoria: p.categoria,
+          },
           ...prev,
         ];
       });
@@ -230,15 +232,12 @@ export default function ProductosScreen() {
     }
 
     const cat = nombreCategoria(item);
-    const cant = (item as any).cantidad;
-    const uni = (item as any).unidad;
-
     return (
       <Pressable style={styles.card} onPress={() => abrirEditar(item)}>
         <View style={styles.cardInfo}>
           <Text style={styles.cardTitle}>
             {item.nombre}
-            {cant ? `  ×${cant}${uni ? ` ${uni}` : ''}` : ''}
+            {item.cantidad ? `  ×${item.cantidad}${item.unidad ? ` ${item.unidad}` : ''}` : ''}
           </Text>
           {!!cat && <Text style={styles.cardCategory}>{cat}</Text>}
           <Text style={styles.cardDate}>{formatearFecha(item.fechaCaducidad)}</Text>
@@ -262,6 +261,7 @@ export default function ProductosScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.content}>
         <ScreenHeader title="Productos" subtitle={`${productos.length} en tu despensa`} />
+        <ErrorMessage mensaje={errorDatos} />
 
         <View style={styles.searchBar}>
           <MaterialCommunityIcons name="magnify" size={20} color={colors.inkMuted} />
@@ -354,7 +354,7 @@ export default function ProductosScreen() {
 
               <Text style={styles.label}>Categoría</Text>
               <View style={styles.chips}>
-                {categorias.map((c: any) => {
+                {categorias.map((c) => {
                   const id = idCategoria(c);
                   const activa = categoriaSel === id;
                   return (
@@ -389,6 +389,7 @@ export default function ProductosScreen() {
                 />
               )}
 
+              <ErrorMessage mensaje={errorFormulario} />
               <View style={styles.modalActions}>
                 <Pressable style={[styles.btn, styles.btnGhost]} onPress={cerrarModal}>
                   <Text style={[styles.btnText, { color: colors.ink }]}>Cancelar</Text>

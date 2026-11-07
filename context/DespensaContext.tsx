@@ -6,9 +6,17 @@ import {
   listaCompras as listaMock,
   productos as productosMock,
 } from '@/theme/mockData';
-import type { ItemCompra } from '@/theme/types';
+import type { Category, CategoryId, ItemCompra, Producto as ProductoModelo } from '@/theme/types';
+import { logger } from '@/services/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  setDoc,
+  type Firestore,
+} from 'firebase/firestore';
 import {
   createContext,
   ReactNode,
@@ -20,8 +28,8 @@ import {
   useState,
 } from 'react';
 
-export type Producto = (typeof productosMock)[number];
-type Categoria = (typeof categoriasMock)[number];
+export type Producto = ProductoModelo;
+type Categoria = Category;
 
 export type CategoriaConConteo = Categoria & { cantidad: number };
 export type DiasAviso = 1 | 3 | 7;
@@ -36,25 +44,70 @@ type DespensaContextValue = {
   setNombreUsuario: React.Dispatch<React.SetStateAction<string | null>>;
   diasAviso: DiasAviso;
   setDiasAviso: (dias: DiasAviso) => void;
+  errorDatos: string | null;
 };
 
 const DespensaContext = createContext<DespensaContextValue | null>(null);
 
 const CLAVE_DIAS_AVISO = 'diasAviso';
 
-// Ajusta esto si tu producto guarda la categoría con otro nombre de campo
-const categoriaDe = (p: Producto) => (p as any).categoria;
-
 // Firestore no acepta valores `undefined`, así que se eliminan antes de guardar
 const limpiar = <T,>(item: T): T => JSON.parse(JSON.stringify(item));
 
-type ConId = { id: string | number };
+type ConId = { id: string };
 
 // Ordena de más nuevo a más viejo (los ids nuevos son Date.now())
 const masNuevoPrimero = <T extends ConId>(lista: T[]): T[] =>
-  [...lista].sort((a, b) =>
-    String(b.id).localeCompare(String(a.id), undefined, { numeric: true })
-  );
+  [...lista].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
+
+function esObjeto(valor: unknown): valor is Record<string, unknown> {
+  return typeof valor === 'object' && valor !== null;
+}
+
+function normalizarCategoria(valor: unknown): CategoryId | undefined {
+  if (typeof valor !== 'string') return undefined;
+  return categoriasMock.find((categoria) => categoria.id === valor || categoria.nombre === valor)?.id;
+}
+
+function productoDesdeFirestore(id: string, valor: unknown): Producto | null {
+  if (!esObjeto(valor)) return null;
+  if (
+    typeof valor.nombre !== 'string' ||
+    typeof valor.cantidad !== 'number' ||
+    !Number.isFinite(valor.cantidad) ||
+    valor.cantidad < 1 ||
+    typeof valor.fechaCaducidad !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    id,
+    nombre: valor.nombre,
+    cantidad: valor.cantidad,
+    unidad: typeof valor.unidad === 'string' ? valor.unidad : 'pzas',
+    fechaCaducidad: valor.fechaCaducidad,
+    categoria: normalizarCategoria(valor.categoria),
+  };
+}
+
+function itemCompraDesdeFirestore(id: string, valor: unknown): ItemCompra | null {
+  if (!esObjeto(valor)) return null;
+  if (
+    typeof valor.nombre !== 'string' ||
+    (typeof valor.cantidad !== 'string' && typeof valor.cantidad !== 'number') ||
+    typeof valor.comprado !== 'boolean'
+  ) {
+    return null;
+  }
+  return {
+    id,
+    nombre: valor.nombre,
+    cantidad: String(valor.cantidad),
+    comprado: valor.comprado,
+    unidad: typeof valor.unidad === 'string' ? valor.unidad : undefined,
+    categoria: normalizarCategoria(valor.categoria),
+  };
+}
 
 export function DespensaProvider({ children }: { children: ReactNode }) {
   const { usuario } = useAuth();
@@ -63,13 +116,14 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
 
   // Con Firestore se empieza vacío; sin Firebase (modo demo) se usan los datos de ejemplo
   const [productos, setProductosState] = useState<Producto[]>(() =>
-    usaFirestore ? [] : (productosMock as Producto[])
+    usaFirestore ? [] : productosMock
   );
   const [listaCompras, setListaComprasState] = useState<ItemCompra[]>(() =>
     usaFirestore ? [] : listaMock
   );
   const [nombreUsuario, setNombreUsuario] = useState<string | null>(null);
   const [diasAviso, setDiasAvisoState] = useState<DiasAviso>(3);
+  const [errorDatos, setErrorDatos] = useState<string | null>(null);
 
   const productosRef = useRef(productos);
   const listaRef = useRef(listaCompras);
@@ -81,89 +135,138 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
         const n = Number(valor);
         if (n === 1 || n === 3 || n === 7) setDiasAvisoState(n);
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        logger.error('Preferencias locales', error);
+        setErrorDatos('No se pudo leer la preferencia de avisos guardada en este dispositivo.');
+      });
   }, []);
 
   const setDiasAviso = useCallback((dias: DiasAviso) => {
     setDiasAvisoState(dias);
-    AsyncStorage.setItem(CLAVE_DIAS_AVISO, String(dias)).catch(() => {});
+    AsyncStorage.setItem(CLAVE_DIAS_AVISO, String(dias)).catch((error: unknown) => {
+      logger.error('Preferencias locales', error);
+      setErrorDatos('No se pudo guardar la preferencia de avisos en este dispositivo.');
+    });
   }, []);
 
   // Escucha en tiempo real los datos del usuario
   useEffect(() => {
     if (!usaFirestore) return;
+    setErrorDatos(null);
 
     if (!uid) {
       productosRef.current = [];
       listaRef.current = [];
       setProductosState([]);
       setListaComprasState([]);
+      setErrorDatos(null);
       return;
     }
 
-    const db = getFirebaseDb();
+    try {
+      const db = getFirebaseDb();
+      const unsubProductos = onSnapshot(
+        collection(db, 'usuarios', uid, 'productos'),
+        (snap) => {
+          const datos = snap.docs
+            .map((documento) => productoDesdeFirestore(documento.id, documento.data()))
+            .filter((producto): producto is Producto => producto !== null);
+          if (datos.length !== snap.size) {
+            logger.warn('Firestore', 'Se omitieron documentos de producto con datos incompletos.');
+            setErrorDatos('Algunos productos no se pudieron mostrar porque sus datos están incompletos.');
+          }
+          const ordenados = masNuevoPrimero(datos);
+          productosRef.current = ordenados;
+          setProductosState(ordenados);
+        },
+        (error: Error) => {
+          logger.error('Lectura de productos', error);
+          setErrorDatos('No se pudieron cargar tus productos. Revisa tu conexión y las reglas de Firestore.');
+        },
+      );
 
-    const unsubProductos = onSnapshot(
-      collection(db, 'usuarios', uid, 'productos'),
-      (snap) => {
-        const datos = masNuevoPrimero(
-          snap.docs.map((d) => ({ ...d.data(), id: d.id }) as unknown as Producto)
-        );
-        productosRef.current = datos;
-        setProductosState(datos);
-      },
-      (error) => console.warn('Error al leer productos:', error)
-    );
+      const unsubLista = onSnapshot(
+        collection(db, 'usuarios', uid, 'listaCompras'),
+        (snap) => {
+          const datos = snap.docs
+            .map((documento) => itemCompraDesdeFirestore(documento.id, documento.data()))
+            .filter((item): item is ItemCompra => item !== null);
+          if (datos.length !== snap.size) {
+            logger.warn('Firestore', 'Se omitieron documentos de compra con datos incompletos.');
+            setErrorDatos('Algunos artículos no se pudieron mostrar porque sus datos están incompletos.');
+          }
+          const ordenados = masNuevoPrimero(datos);
+          listaRef.current = ordenados;
+          setListaComprasState(ordenados);
+        },
+        (error: Error) => {
+          logger.error('Lectura de compras', error);
+          setErrorDatos('No se pudo cargar tu lista de compras. Revisa tu conexión y las reglas de Firestore.');
+        },
+      );
 
-    const unsubLista = onSnapshot(
-      collection(db, 'usuarios', uid, 'listaCompras'),
-      (snap) => {
-        const datos = masNuevoPrimero(
-          snap.docs.map((d) => ({ ...d.data(), id: d.id }) as unknown as ItemCompra)
-        );
-        listaRef.current = datos;
-        setListaComprasState(datos);
-      },
-      (error) => console.warn('Error al leer la lista de compras:', error)
-    );
-
-    return () => {
-      unsubProductos();
-      unsubLista();
-    };
+      return () => {
+        unsubProductos();
+        unsubLista();
+      };
+    } catch (error) {
+      logger.error('Conexión con Firestore', error);
+      setErrorDatos('No se pudieron abrir tus datos. Revisa la configuración y las reglas de Firestore.');
+    }
   }, [uid, usaFirestore]);
 
   // Reprograma los avisos de caducidad cuando cambian los productos o el tiempo de aviso
   useEffect(() => {
-    programarAvisos(productos as any[], diasAviso);
+    programarAvisos(productos, diasAviso);
   }, [productos, diasAviso]);
 
   // Compara la lista anterior con la nueva y guarda solo lo que cambió
   const sincronizar = useCallback(
     <T extends ConId>(coleccion: string, prev: T[], next: T[]) => {
       if (!usaFirestore || !uid) return;
-      const db = getFirebaseDb();
+      let db: Firestore;
+      try {
+        db = getFirebaseDb();
+      } catch (error) {
+        logger.error('Conexión con Firestore', error);
+        setErrorDatos('No se pudo conectar con Firestore. Revisa la configuración del proyecto.');
+        return;
+      }
 
       const anteriores = new Map(prev.map((i) => [String(i.id), JSON.stringify(limpiar(i))]));
       const idsNuevos = new Set<string>();
+      const informarErrorEscritura = (error: unknown) => {
+        logger.error('Escritura en Firestore', error);
+        setErrorDatos('No se pudo guardar un cambio. Revisa tu conexión y las reglas de Firestore.');
+      };
+      const informarErrorEliminacion = (error: unknown) => {
+        logger.error('Eliminación en Firestore', error);
+        setErrorDatos('No se pudo eliminar un dato. Revisa tu conexión y las reglas de Firestore.');
+      };
 
       next.forEach((item) => {
         const id = String(item.id);
         idsNuevos.add(id);
         const datos = limpiar(item);
         if (anteriores.get(id) !== JSON.stringify(datos)) {
-          setDoc(doc(db, 'usuarios', uid, coleccion, id), { ...datos, id }).catch((e) =>
-            console.warn('Error al guardar:', e)
-          );
+          try {
+            void setDoc(doc(db, 'usuarios', uid, coleccion, id), { ...datos, id }).catch(
+              informarErrorEscritura,
+            );
+          } catch (error) {
+            informarErrorEscritura(error);
+          }
         }
       });
 
       prev.forEach((item) => {
         const id = String(item.id);
         if (!idsNuevos.has(id)) {
-          deleteDoc(doc(db, 'usuarios', uid, coleccion, id)).catch((e) =>
-            console.warn('Error al eliminar:', e)
-          );
+          try {
+            void deleteDoc(doc(db, 'usuarios', uid, coleccion, id)).catch(informarErrorEliminacion);
+          } catch (error) {
+            informarErrorEliminacion(error);
+          }
         }
       });
     },
@@ -177,7 +280,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       const next = typeof accion === 'function' ? accion(prev) : accion;
       productosRef.current = next;
       setProductosState(next);
-      sincronizar('productos', prev as unknown as ConId[], next as unknown as ConId[]);
+      sincronizar('productos', prev, next);
     },
     [sincronizar]
   );
@@ -188,7 +291,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       const next = typeof accion === 'function' ? accion(prev) : accion;
       listaRef.current = next;
       setListaComprasState(next);
-      sincronizar('listaCompras', prev as unknown as ConId[], next as unknown as ConId[]);
+      sincronizar('listaCompras', prev, next);
     },
     [sincronizar]
   );
@@ -199,7 +302,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       categoriasMock.map((c) => ({
         ...c,
         cantidad: productos.filter(
-          (p) => categoriaDe(p) === (c as any).id || categoriaDe(p) === (c as any).nombre
+          (p) => p.categoria === c.id
         ).length,
       })),
     [productos]
@@ -216,6 +319,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       setNombreUsuario,
       diasAviso,
       setDiasAviso,
+      errorDatos,
     }),
     [
       productos,
@@ -226,6 +330,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       nombreUsuario,
       diasAviso,
       setDiasAviso,
+      errorDatos,
     ]
   );
 

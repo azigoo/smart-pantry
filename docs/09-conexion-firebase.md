@@ -114,3 +114,27 @@ demo (con los datos de ejemplo de `theme/mockData.ts`) mientras se configura Fir
 - Los códigos de error de Firebase (por ejemplo, `auth/wrong-password`) se traducen a
   mensajes en español en `services/authService.ts`, sin exponer detalles técnicos al
   usuario final.
+
+## 9. Desplegar las reglas de Firestore
+
+El archivo `firestore.rules` limita las lecturas y escrituras a usuarios autenticados
+y a su propia ruta `/usuarios/{uid}/**`. El `uid` de la ruta debe coincidir con el
+`uid` del token de Firebase Authentication; las demás rutas quedan denegadas.
+
+1. Instala o ejecuta Firebase CLI, inicia sesión y selecciona el proyecto de Firebase:
+
+   ```bash
+   npx firebase-tools login
+   npx firebase-tools use --add
+   ```
+
+2. Desde la raíz del proyecto, despliega únicamente las reglas:
+
+   ```bash
+   npx firebase-tools deploy --only firestore:rules
+   ```
+
+La raíz incluye `firebase.json`, que enlaza el despliegue con `firestore.rules`.
+Confirma en Firebase Console → Firestore Database → Rules que se publicó la versión
+esperada. El despliegue requiere acceso al proyecto Firebase correspondiente; no
+forma parte de las pruebas locales.

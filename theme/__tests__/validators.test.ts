@@ -1,22 +1,32 @@
-import { validarNuevoProducto } from '@/theme/validators';
+import {
+  validarContrasena,
+  validarCorreo,
+  validarInicioSesion,
+  validarItemCompra,
+  validarNombrePerfil,
+  validarNuevoProducto,
+  validarRegistro,
+} from '@/theme/validators';
 
 describe('validarNuevoProducto (RF-06 / RU-01: registro de productos)', () => {
+  const fechaFutura = '31/12/2099';
+
   it('CP-01.1 - rechaza un producto sin nombre', () => {
-    const resultado = validarNuevoProducto({ nombre: '', cantidad: '1', fecha: '20/09/2026' });
+    const resultado = validarNuevoProducto({ nombre: '', cantidad: '1', fecha: fechaFutura });
     expect(resultado.valido).toBe(false);
     expect(resultado.errores).toContain('El nombre del producto es obligatorio.');
   });
 
   it('CP-01.2 - rechaza una cantidad no numérica', () => {
-    const resultado = validarNuevoProducto({ nombre: 'Leche', cantidad: 'abc', fecha: '20/09/2026' });
+    const resultado = validarNuevoProducto({ nombre: 'Leche', cantidad: 'abc', fecha: fechaFutura });
     expect(resultado.valido).toBe(false);
-    expect(resultado.errores).toContain('La cantidad debe ser un número mayor a 0.');
+    expect(resultado.errores).toContain('La cantidad debe ser un número entero entre 1 y 99999.');
   });
 
   it('CP-01.3 - rechaza una cantidad menor o igual a 0', () => {
-    const resultado = validarNuevoProducto({ nombre: 'Leche', cantidad: '0', fecha: '20/09/2026' });
+    const resultado = validarNuevoProducto({ nombre: 'Leche', cantidad: '0', fecha: fechaFutura });
     expect(resultado.valido).toBe(false);
-    expect(resultado.errores).toContain('La cantidad debe ser un número mayor a 0.');
+    expect(resultado.errores).toContain('La cantidad debe ser un número entero entre 1 y 99999.');
   });
 
   it('CP-01.4 - rechaza una fecha vacía', () => {
@@ -28,11 +38,13 @@ describe('validarNuevoProducto (RF-06 / RU-01: registro de productos)', () => {
   it('CP-01.5 - rechaza una fecha con formato inválido', () => {
     const resultado = validarNuevoProducto({ nombre: 'Leche', cantidad: '1', fecha: '2026-09-20' });
     expect(resultado.valido).toBe(false);
-    expect(resultado.errores).toContain('La fecha de caducidad debe tener el formato DD/MM/AAAA.');
+    expect(resultado.errores).toContain(
+      'La fecha de caducidad debe ser una fecha válida con formato DD/MM/AAAA.',
+    );
   });
 
   it('CP-01.6 - acepta un producto válido con todos los campos correctos', () => {
-    const resultado = validarNuevoProducto({ nombre: 'Leche', cantidad: '2', fecha: '20/09/2026' });
+    const resultado = validarNuevoProducto({ nombre: 'Leche', cantidad: '2', fecha: fechaFutura });
     expect(resultado.valido).toBe(true);
     expect(resultado.errores).toHaveLength(0);
   });
@@ -41,5 +53,51 @@ describe('validarNuevoProducto (RF-06 / RU-01: registro de productos)', () => {
     const resultado = validarNuevoProducto({ nombre: '', cantidad: '-1', fecha: '' });
     expect(resultado.valido).toBe(false);
     expect(resultado.errores).toHaveLength(3);
+  });
+
+  it('rechaza fechas inexistentes y fechas anteriores a hoy', () => {
+    expect(
+      validarNuevoProducto({ nombre: 'Leche', cantidad: '1', fecha: '31/02/2099' }).valido,
+    ).toBe(false);
+    expect(
+      validarNuevoProducto({ nombre: 'Leche', cantidad: '1', fecha: '01/01/2000' }).errores,
+    ).toContain('La fecha de caducidad no puede ser anterior a hoy.');
+  });
+
+  it('acepta los límites de cantidad y rechaza el exceso', () => {
+    expect(
+      validarNuevoProducto({ nombre: 'Leche', cantidad: '1', fecha: fechaFutura }).valido,
+    ).toBe(true);
+    expect(
+      validarNuevoProducto({ nombre: 'Leche', cantidad: '99999', fecha: fechaFutura }).valido,
+    ).toBe(true);
+    expect(
+      validarNuevoProducto({ nombre: 'Leche', cantidad: '100000', fecha: fechaFutura }).valido,
+    ).toBe(false);
+  });
+});
+
+describe('validación de los demás formularios', () => {
+  it('valida correo, contraseña y registro', () => {
+    expect(validarCorreo('persona@ejemplo.com').valido).toBe(true);
+    expect(validarCorreo('persona@').valido).toBe(false);
+    expect(validarContrasena('12345').valido).toBe(false);
+    expect(validarContrasena('123456').valido).toBe(true);
+    expect(validarInicioSesion({ correo: 'persona@ejemplo.com', contrasena: '123456' }).valido).toBe(
+      true,
+    );
+    expect(
+      validarRegistro({ nombre: 'Ana', correo: 'persona@ejemplo.com', contrasena: '123456' })
+        .valido,
+    ).toBe(true);
+  });
+
+  it('valida el nombre de perfil y cantidades de lista compatibles con unidades', () => {
+    expect(validarNombrePerfil('  Ana  ').valido).toBe(true);
+    expect(validarNombrePerfil(' ').valido).toBe(false);
+    expect(validarItemCompra({ nombre: 'Huevos', cantidad: '1 docena' }).valido).toBe(true);
+    expect(validarItemCompra({ nombre: 'Huevos', cantidad: '0' }).valido).toBe(false);
+    expect(validarItemCompra({ nombre: 'Huevos', cantidad: '-2' }).valido).toBe(false);
+    expect(validarItemCompra({ nombre: 'Huevos', cantidad: '100000' }).valido).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { logger } from '@/services/logger';
 
 const CANAL = 'caducidad';
 const HORA_AVISO = 9; // los avisos llegan a las 9:00 am
@@ -26,8 +27,8 @@ function cargar() {
       // require() diferido: solo se evalúa cuando el módulo está disponible
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       modulo = require('expo-notifications');
-    } catch (e) {
-      console.warn('expo-notifications no disponible:', e);
+    } catch (error) {
+      logger.error('Carga de notificaciones', error);
       return null;
     }
   }
@@ -111,8 +112,8 @@ export async function programarAvisos(productos: ProductoAviso[], diasAntes: num
         },
       });
     }
-  } catch (e) {
-    console.warn('Error al programar avisos:', e);
+  } catch (error) {
+    logger.error('Programación de notificaciones', error);
   }
 }
 
@@ -131,8 +132,8 @@ export async function enviarAvisoDePrueba(): Promise<boolean> {
       },
     });
     return true;
-  } catch (e) {
-    console.warn('Error en el aviso de prueba:', e);
+  } catch (error) {
+    logger.error('Notificación de prueba', error);
     return false;
   }
 }

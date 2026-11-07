@@ -1,9 +1,12 @@
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ErrorMessage } from '@/components/ErrorMessage';
 import { useDespensa, type Producto } from '@/context/DespensaContext';
 import { colors } from '@/theme/colors';
 import { aClave } from '@/theme/fechaLocal';
 import type { ItemCompra } from '@/theme/types';
+import type { Category, CategoryId } from '@/theme/types';
 import { type } from '@/theme/typography';
+import { validarItemCompra, validarNuevoProducto } from '@/theme/validators';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useMemo, useState } from 'react';
@@ -24,7 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const DANGER = '#C0392B';
 
-const idCategoria = (c: any): string => String(c.id ?? c.nombre);
+const idCategoria = (categoria: Category): CategoryId => categoria.id;
 
 const formatearFecha = (d: Date) =>
   d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -49,8 +52,10 @@ export default function ListaComprasScreen() {
     setListaCompras: setItems,
     setProductos,
     categorias,
+    errorDatos,
   } = useDespensa();
   const [nuevo, setNuevo] = useState('');
+  const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
 
   // Modal de edición
   const [modalVisible, setModalVisible] = useState(false);
@@ -62,7 +67,7 @@ export default function ListaComprasScreen() {
   const [compraItem, setCompraItem] = useState<ItemCompra | null>(null);
   const [compraCantidad, setCompraCantidad] = useState('1');
   const [compraFecha, setCompraFecha] = useState<Date>(new Date());
-  const [compraCat, setCompraCat] = useState<string | null>(null);
+  const [compraCat, setCompraCat] = useState<CategoryId | null>(null);
   const [mostrarPicker, setMostrarPicker] = useState(false);
 
   const pendientes = items.filter((i) => !i.comprado).length;
@@ -90,8 +95,7 @@ export default function ListaComprasScreen() {
     const fecha = new Date();
     fecha.setDate(fecha.getDate() + 7);
     setCompraFecha(fecha);
-    const valor = (item as any).categoria;
-    const cat = categorias.find((c: any) => c.id === valor || c.nombre === valor);
+    const cat = categorias.find((categoria) => categoria.id === item.categoria);
     setCompraCat(cat ? idCategoria(cat) : null);
     setMostrarPicker(false);
   }
@@ -99,6 +103,7 @@ export default function ListaComprasScreen() {
   function cerrarCompra() {
     setCompraItem(null);
     setMostrarPicker(false);
+    setErrorFormulario(null);
   }
 
   function soloMarcar() {
@@ -108,17 +113,26 @@ export default function ListaComprasScreen() {
 
   function agregarADespensa() {
     if (!compraItem) return;
-    const parsed = parseInt(compraCantidad, 10);
-    const cantidad = Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    const validacion = validarNuevoProducto({
+      nombre: compraItem.nombre,
+      cantidad: compraCantidad,
+      fecha: aClave(compraFecha).split('-').reverse().join('/'),
+    });
+    if (!validacion.valido) {
+      setErrorFormulario(validacion.errores.join(' '));
+      return;
+    }
+    setErrorFormulario(null);
+    const cantidad = Number(compraCantidad);
 
-    const producto = {
+    const producto: Producto = {
       id: Date.now().toString(),
       nombre: compraItem.nombre,
       cantidad,
-      unidad: (compraItem as any).unidad ?? 'pzas',
+      unidad: compraItem.unidad ?? 'pzas',
       fechaCaducidad: aClave(compraFecha),
-      categoria: compraCat ?? undefined,
-    } as unknown as Producto;
+      categoria: compraCat ?? compraItem.categoria,
+    };
 
     setProductos((prev) => [producto, ...prev]);
     marcarComprado(compraItem.id, true);
@@ -138,7 +152,12 @@ export default function ListaComprasScreen() {
 
   function agregarItem() {
     const nombre = nuevo.trim();
-    if (!nombre) return;
+    const validacion = validarItemCompra({ nombre, cantidad: '1' });
+    if (!validacion.valido) {
+      setErrorFormulario(validacion.errores.join(' '));
+      return;
+    }
+    setErrorFormulario(null);
     setItems((prev) => [
       { id: Date.now().toString(), nombre, cantidad: '1', comprado: false },
       ...prev,
@@ -165,21 +184,25 @@ export default function ListaComprasScreen() {
     setEditandoId(item.id);
     setEditNombre(item.nombre);
     setEditCantidad(String(item.cantidad ?? '1'));
+    setErrorFormulario(null);
     setModalVisible(true);
   }
 
   function cerrarModal() {
     setModalVisible(false);
     setEditandoId(null);
+    setErrorFormulario(null);
   }
 
   function guardarEdicion() {
-    const nombre = editNombre.trim();
-    if (!nombre) {
-      Alert.alert('Falta el nombre', 'Escribe el nombre del producto.');
+    const validacion = validarItemCompra({ nombre: editNombre, cantidad: editCantidad });
+    if (!validacion.valido) {
+      setErrorFormulario(validacion.errores.join(' '));
       return;
     }
-    const cantidad = editCantidad.trim() || '1';
+    setErrorFormulario(null);
+    const nombre = editNombre.trim();
+    const cantidad = editCantidad.trim();
     setItems((prev) => prev.map((i) => (i.id === editandoId ? { ...i, nombre, cantidad } : i)));
     cerrarModal();
   }
@@ -192,7 +215,6 @@ export default function ListaComprasScreen() {
   }
 
   const renderItem = ({ item }: { item: ItemCompra }) => {
-    const unidad = (item as any).unidad as string | undefined;
     return (
       <View style={[styles.row, item.comprado && styles.rowDone]}>
         <Pressable onPress={() => toggleItem(item)} hitSlop={8}>
@@ -207,7 +229,7 @@ export default function ListaComprasScreen() {
           <Text style={[styles.rowTitle, item.comprado && styles.rowTitleDone]}>{item.nombre}</Text>
           <Text style={styles.rowQty}>
             Cantidad: {item.cantidad}
-            {unidad ? ` ${unidad}` : ''}
+            {item.unidad ? ` ${item.unidad}` : ''}
           </Text>
         </Pressable>
 
@@ -225,6 +247,8 @@ export default function ListaComprasScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.content}>
         <ScreenHeader title="Lista de compras" subtitle={`${pendientes} productos pendientes`} />
+        <ErrorMessage mensaje={errorDatos} />
+        <ErrorMessage mensaje={errorFormulario} />
 
         <View style={styles.addBar}>
           <TextInput
@@ -299,6 +323,7 @@ export default function ListaComprasScreen() {
               </Pressable>
             </View>
 
+            <ErrorMessage mensaje={errorFormulario} />
             <View style={styles.modalActions}>
               <Pressable style={[styles.btn, styles.btnGhost]} onPress={cerrarModal}>
                 <Text style={[styles.btnText, { color: colors.ink }]}>Cancelar</Text>
@@ -348,7 +373,7 @@ export default function ListaComprasScreen() {
 
               <Text style={styles.label}>Categoría</Text>
               <View style={styles.chips}>
-                {categorias.map((c: any) => {
+                {categorias.map((c) => {
                   const id = idCategoria(c);
                   const activa = compraCat === id;
                   return (
@@ -383,6 +408,7 @@ export default function ListaComprasScreen() {
                 />
               )}
 
+              <ErrorMessage mensaje={errorFormulario} />
               <View style={styles.modalActions}>
                 <Pressable style={[styles.btn, styles.btnGhost]} onPress={soloMarcar}>
                   <Text style={[styles.btnText, { color: colors.ink }]}>Solo marcar</Text>

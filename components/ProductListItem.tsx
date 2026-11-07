@@ -26,7 +26,7 @@ export function ProductListItem({ producto, onPress }: Props) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
       <View style={[styles.icon, { backgroundColor: tonePalette[categoria.color] }]}>
-        <MaterialCommunityIcons name={categoria.icono as any} size={22} color={colors.ink} />
+        <MaterialCommunityIcons name={categoria.icono} size={22} color={colors.ink} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={type.h3}>{producto.nombre}</Text>

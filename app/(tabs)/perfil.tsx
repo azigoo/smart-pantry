@@ -1,10 +1,13 @@
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ErrorMessage } from '@/components/ErrorMessage';
 import { useAuth } from '@/context/AuthContext';
 import { useDespensa } from '@/context/DespensaContext';
-import { cerrarSesion } from '@/services/authService';
+import { cerrarSesion, esErrorAutenticacion } from '@/services/authService';
+import { logger } from '@/services/logger';
 import { colors } from '@/theme/colors';
 import { diasParaCaducar } from '@/theme/dates';
 import { type } from '@/theme/typography';
+import { validarNombrePerfil } from '@/theme/validators';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { updateProfile } from 'firebase/auth';
@@ -35,7 +38,7 @@ function aviso(titulo: string, mensaje: string) {
 }
 
 export default function PerfilScreen() {
-  const { usuario, firebaseListo } = useAuth();
+  const { usuario, firebaseListo, errorAutenticacion } = useAuth();
   const {
     productos,
     listaCompras,
@@ -44,11 +47,13 @@ export default function PerfilScreen() {
     setNombreUsuario,
     diasAviso,
     setDiasAviso,
+    errorDatos,
   } = useDespensa();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [nombreEdit, setNombreEdit] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [errorPerfil, setErrorPerfil] = useState<string | null>(null);
 
   const nombre = nombreUsuario ?? usuario?.displayName ?? 'Sin nombre';
   const correo = usuario?.email ?? 'Sin sesión iniciada';
@@ -66,35 +71,46 @@ export default function PerfilScreen() {
 
   function abrirEditar() {
     setNombreEdit(nombreUsuario ?? usuario?.displayName ?? '');
+    setErrorPerfil(null);
     setModalVisible(true);
   }
 
   async function guardarNombre() {
     const limpio = nombreEdit.trim();
-    if (!limpio) {
-      aviso('Falta el nombre', 'Escribe tu nombre.');
+    const validacion = validarNombrePerfil(limpio);
+    if (!validacion.valido) {
+      setErrorPerfil(validacion.errores.join(' '));
       return;
     }
     if (!usuario) {
-      aviso('Sin sesión', 'Inicia sesión para editar tu perfil.');
+      setErrorPerfil('Inicia sesión para editar tu perfil.');
       return;
     }
     try {
       setGuardando(true);
-      await updateProfile(usuario as any, { displayName: limpio });
+      setErrorPerfil(null);
+      await updateProfile(usuario, { displayName: limpio });
       setNombreUsuario(limpio);
       setModalVisible(false);
-    } catch (e) {
-      aviso('No se pudo guardar', 'Intenta de nuevo en un momento.');
+    } catch (error) {
+      logger.error('Actualización de perfil', error);
+      setErrorPerfil('No se pudo guardar tu nombre. Revisa tu conexión e intenta de nuevo.');
     } finally {
       setGuardando(false);
     }
   }
 
   async function ejecutarCierreDeSesion() {
-    setNombreUsuario(null);
-    await cerrarSesion();
-    router.replace('/(auth)/login');
+    try {
+      await cerrarSesion();
+      setNombreUsuario(null);
+      router.replace('/(auth)/login');
+    } catch (error) {
+      logger.error('Cierre de sesión', error);
+      setErrorPerfil(
+        esErrorAutenticacion(error) ? error.mensaje : 'No se pudo cerrar la sesión. Intenta de nuevo.',
+      );
+    }
   }
   async function probarAviso() {
     const ok = await enviarAvisoDePrueba();
@@ -123,6 +139,9 @@ export default function PerfilScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenHeader title="Perfil" subtitle="Tu cuenta y tu despensa" />
+        <ErrorMessage mensaje={errorDatos} />
+        <ErrorMessage mensaje={errorAutenticacion} />
+        <ErrorMessage mensaje={errorPerfil} />
 
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
@@ -210,6 +229,7 @@ export default function PerfilScreen() {
           <Pressable style={styles.modalBackdrop} onPress={() => setModalVisible(false)} />
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Editar nombre</Text>
+            <ErrorMessage mensaje={errorPerfil} />
             <TextInput
               value={nombreEdit}
               onChangeText={setNombreEdit}

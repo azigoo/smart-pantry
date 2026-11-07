@@ -1,9 +1,15 @@
 import { AboutModal } from '@/components/AboutModal';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { TextField } from '@/components/TextField';
-import { iniciarSesion, recuperarContrasena } from '@/services/authService';
+import { useAuth } from '@/context/AuthContext';
+import {
+  esErrorAutenticacion,
+  iniciarSesion,
+  recuperarContrasena,
+} from '@/services/authService';
 import { firebaseEstaConfigurado } from '@/services/firebase';
 import { colors } from '@/theme/colors';
+import { validarCorreo, validarInicioSesion } from '@/theme/validators';
 import { type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
@@ -23,6 +29,7 @@ const TOQUES_PARA_HUEVO_DE_PASCUA = 3;
 const VENTANA_ENTRE_TOQUES_MS = 1200;
 
 export default function LoginScreen() {
+  const { errorAutenticacion } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [cargando, setCargando] = useState(false);
@@ -60,8 +67,9 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!email.trim() || !password) {
-      setError('Escribe tu correo y tu contraseña.');
+    const validacion = validarInicioSesion({ correo: email, contrasena: password });
+    if (!validacion.valido) {
+      setError(validacion.errores.join(' '));
       return;
     }
 
@@ -70,7 +78,9 @@ export default function LoginScreen() {
       await iniciarSesion(email, password);
       router.replace('/(tabs)');
     } catch (err) {
-      const mensaje = (err as { mensaje?: string })?.mensaje ?? 'No se pudo iniciar sesión.';
+      const mensaje = esErrorAutenticacion(err)
+        ? err.mensaje
+        : 'No se pudo iniciar sesión. Intenta de nuevo.';
       setError(mensaje);
     } finally {
       setCargando(false);
@@ -86,8 +96,12 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!email.trim()) {
-      setError('Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".');
+    const validacion = validarCorreo(email);
+    if (!validacion.valido) {
+      setError(
+        validacion.errores.join(' ') +
+          ' Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".',
+      );
       return;
     }
 
@@ -96,8 +110,9 @@ export default function LoginScreen() {
       await recuperarContrasena(email);
       setInfo('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña. Revisa también la carpeta de spam.');
     } catch (err) {
-      const mensaje =
-        (err as { mensaje?: string })?.mensaje ?? 'No se pudo enviar el correo. Intenta de nuevo.';
+      const mensaje = esErrorAutenticacion(err)
+        ? err.mensaje
+        : 'No se pudo enviar el correo. Intenta de nuevo.';
       setError(mensaje);
     } finally {
       setCargando(false);
@@ -149,7 +164,9 @@ export default function LoginScreen() {
               <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
             </Pressable>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error || errorAutenticacion ? (
+              <Text style={styles.errorText}>{error ?? errorAutenticacion}</Text>
+            ) : null}
             {info ? <Text style={styles.infoText}>{info}</Text> : null}
 
             <PrimaryButton

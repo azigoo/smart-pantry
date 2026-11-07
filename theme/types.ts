@@ -1,3 +1,8 @@
+import type { ComponentProps } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+export type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
+
 export type CategoryId =
   | 'lacteos'
   | 'granos'
@@ -11,14 +16,14 @@ export type CategoryId =
 export type Category = {
   id: CategoryId;
   nombre: string;
-  icono: string; // nombre de ícono de MaterialCommunityIcons
+  icono: IconName;
   color: 'yellow' | 'blue' | 'pink' | 'lavender';
 };
 
 export type Producto = {
   id: string;
   nombre: string;
-  categoria: CategoryId;
+  categoria?: CategoryId;
   cantidad: number;
   unidad: string;
   fechaCaducidad: string; // ISO yyyy-mm-dd
@@ -29,4 +34,6 @@ export type ItemCompra = {
   nombre: string;
   cantidad: string;
   comprado: boolean;
+  unidad?: string;
+  categoria?: CategoryId;
 };

@@ -16,11 +16,11 @@
 | 6.9 | ¿Se realizaron pruebas de regresión? | Reportes | ☑ |
 | 6.10 | ¿Se documentaron los resultados de las pruebas? | Informe de pruebas | ☑ |
 
-> **Alcance de esta verificación:** el proyecto se encuentra en la etapa de
-> **frontend con datos de ejemplo** (sin backend ni base de datos). Por lo tanto, los
-> casos de prueba que dependen de un servidor, autenticación real o múltiples hogares
-> (CP-03, CP-06, CP-09) se documentan como **pendientes**, no como aprobados de forma
-> ficticia. Esto se marca explícitamente en la matriz del punto 6.3.
+> **Alcance de esta verificación:** el proyecto incluye integración con Firebase Auth
+> y Firestore, pero las pruebas automatizadas descritas aquí no se conectan a un
+> proyecto Firebase ni a un emulador. Por ello, los casos que requieren usuarios,
+> reglas desplegadas o múltiples hogares (CP-03, CP-06, CP-09) permanecen
+> **pendientes**; no se consideran aprobados por las pruebas unitarias locales.
 
 ---
 
@@ -58,7 +58,7 @@
 
 | Requisito | Descripción | Caso de prueba | Resultado |
 |---|---|---|---|
-| RU-01 | Registro de productos | CP-01 | ☑ Aprobado (7/7 pruebas unitarias) |
+| RU-01 | Registro de productos | CP-01 | ☑ Aprobado (9/9 pruebas unitarias de producto) |
 | RU-02 | Consulta de productos | CP-02 | ☑ Aprobado (manual) |
 | RU-03 | Administración de productos | CP-03 | ☐ Pendiente (funcionalidad no construida) |
 | RU-04 | Control de cantidades | CP-04 | ◐ Parcial (validado solo en alta de producto) |
@@ -73,9 +73,8 @@
 
 ### 6.4 Resultados de pruebas unitarias
 
-Se implementaron y ejecutaron **13 pruebas unitarias** con Jest (`preset: jest-expo`)
-sobre la lógica pura del proyecto (`theme/`), previamente extraída de los componentes
-visuales para poder probarse de forma aislada.
+Se implementaron y ejecutaron **17 pruebas unitarias** con Jest (`preset: jest-expo`)
+sobre la lógica pura del proyecto (`theme/`). Resultado observado en la Fase 1:
 
 ```
 PASS theme/__tests__/validators.test.ts
@@ -83,13 +82,13 @@ PASS theme/__tests__/dates.test.ts
 PASS theme/__tests__/categoryIcons.test.ts
 
 Test Suites: 3 passed, 3 total
-Tests:       13 passed, 13 total
+Tests:       17 passed, 17 total
 Snapshots:   0 total
 ```
 
 | Archivo de prueba | Caso de prueba | Requisito | Casos cubiertos | Resultado |
 |---|---|---|---|---|
-| `theme/__tests__/validators.test.ts` | CP-01 | RU-01 / RF-06 | Nombre vacío, cantidad no numérica, cantidad ≤ 0, fecha vacía, formato de fecha inválido, producto válido, acumulación de errores | 7/7 aprobadas |
+| `theme/__tests__/validators.test.ts` | CP-01 | RU-01 / RF-06 | Nombre, cantidad, calendario, fecha pasada, límites y validación de login, registro, perfil y lista de compras | 11/11 aprobadas |
 | `theme/__tests__/dates.test.ts` | CP-05 | RU-05 / RF-11 | Días para caducar (fecha futura y vencida), formateo de fecha ISO a DD/MM/AAAA | 4/4 aprobadas |
 | `theme/__tests__/categoryIcons.test.ts` | CP-08 | RU-08 / RF-12 | Búsqueda de categoría existente, categoría de respaldo ante un id inválido | 2/2 aprobadas |
 
@@ -129,10 +128,10 @@ contra el bundle exportado:
 
 ### 6.7 Defectos encontrados
 
-No se detectaron defectos nuevos durante esta ronda de pruebas (las 13 pruebas
-unitarias pasaron en su primer intento tras corregir la configuración de tipos de
-Jest en `tsconfig.json`, registrada como ajuste, no como defecto de producto). Las
-incidencias vigentes son las ya documentadas en el punto 32:
+Durante la implementación de la Fase 1, las primeras ejecuciones detectaron errores
+de tipos y expectativas de validación; se corrigieron y la última ejecución registró
+17/17 pruebas aprobadas y `npx tsc --noEmit` sin errores. Las incidencias vigentes
+son las ya documentadas en el punto 32:
 
 | ID | Incidencia | Severidad | Estado |
 |---|---|---|---|
@@ -162,7 +161,7 @@ no se introdujeron regresiones:
 |---|---|---|
 | `npx tsc --noEmit` | Sin errores | Sin errores (tras agregar `"types": ["jest"]` en `tsconfig.json`) |
 | `npx expo export -p web` | Exporta correctamente | Exporta correctamente (911 módulos) |
-| Comportamiento del modal "Agregar producto" | Validación simple (nombre y fecha no vacíos) | Validación completa (nombre, cantidad numérica > 0, formato de fecha), sin romper la navegación existente |
+| Comportamiento del modal "Agregar producto" | Validación simple (nombre y fecha no vacíos) | Validación de nombre, entero de 1 a 99999 y fecha real no anterior a hoy |
 
 ---
 

@@ -1,5 +1,6 @@
 import { ProductListItem } from '@/components/ProductListItem';
 import { StatCard } from '@/components/StatCard';
+import { ErrorMessage } from '@/components/ErrorMessage';
 import { useAuth } from '@/context/AuthContext';
 import { useDespensa } from '@/context/DespensaContext';
 import { colors } from '@/theme/colors';
@@ -13,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function InicioScreen() {
   const { usuario } = useAuth();
-  const { productos, listaCompras, categorias, nombreUsuario } = useDespensa();
+  const { productos, listaCompras, categorias, nombreUsuario, errorDatos } = useDespensa();
 
   const porVencer = useMemo(
     () => productos.filter((p) => diasParaCaducar(p.fechaCaducidad) <= 5).length,
@@ -40,6 +41,7 @@ export default function InicioScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
+        <ErrorMessage mensaje={errorDatos} />
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.greeting}>Hola, {nombreMostrado}</Text>
@@ -47,7 +49,7 @@ export default function InicioScreen() {
           </View>
           <Pressable
             style={styles.avatar}
-            onPress={() => router.push('/(tabs)/perfil' as any)}
+            onPress={() => router.push('/(tabs)/perfil')}
             hitSlop={8}
           >
             <MaterialCommunityIcons name="account" size={22} color={colors.secondary} />
@@ -86,7 +88,7 @@ export default function InicioScreen() {
 
       <Pressable
         style={styles.fab}
-        onPress={() => router.push({ pathname: '/(tabs)/productos', params: { nuevo: '1' } } as any)}
+        onPress={() => router.push({ pathname: '/(tabs)/productos', params: { nuevo: '1' } })}
       >
         <MaterialCommunityIcons name="plus" size={26} color={colors.surface} />
       </Pressable>

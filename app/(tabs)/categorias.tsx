@@ -1,41 +1,43 @@
 import { CategoryTile } from '@/components/CategoryTile';
+import { ErrorMessage } from '@/components/ErrorMessage';
 import { ProductListItem } from '@/components/ProductListItem';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useDespensa } from '@/context/DespensaContext';
 import { colors } from '@/theme/colors';
 import { diasParaCaducar } from '@/theme/dates';
 import { type } from '@/theme/typography';
+import type { CategoryId } from '@/theme/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CategoriasScreen() {
-  const { productos, categorias } = useDespensa();
-  const [categoriaId, setCategoriaId] = useState<string | null>(null);
+  const { productos, categorias, errorDatos } = useDespensa();
+  const [categoriaId, setCategoriaId] = useState<CategoryId | null>(null);
 
   // Se busca en la lista actual, así el detalle también se mantiene actualizado
   const categoriaSel = useMemo(
-    () => categorias.find((c: any) => String(c.id) === categoriaId) ?? null,
+    () => categorias.find((categoria) => categoria.id === categoriaId) ?? null,
     [categorias, categoriaId]
   );
 
   const productosDeCategoria = useMemo(() => {
     if (!categoriaSel) return [];
-    const c = categoriaSel as any;
     return productos
-      .filter((p: any) => p.categoria === c.id || p.categoria === c.nombre)
+      .filter((producto) => producto.categoria === categoriaSel.id)
       .sort((a, b) => diasParaCaducar(a.fechaCaducidad) - diasParaCaducar(b.fechaCaducidad));
   }, [productos, categoriaSel]);
 
   // Vista de detalle: productos de la categoría seleccionada
   if (categoriaSel) {
-    const nombre = (categoriaSel as any).nombre as string;
+    const nombre = categoriaSel.nombre;
     const total = productosDeCategoria.length;
 
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
         <View style={styles.detail}>
+          <ErrorMessage mensaje={errorDatos} />
           <Pressable style={styles.backBtn} onPress={() => setCategoriaId(null)} hitSlop={8}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={colors.secondary} />
             <Text style={styles.backText}>Categorías</Text>
@@ -72,13 +74,14 @@ export default function CategoriasScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenHeader title="Categorías" subtitle="Organiza tu despensa por tipo de producto" />
+        <ErrorMessage mensaje={errorDatos} />
 
         <View style={styles.grid}>
-          {categorias.map((categoria: any) => (
+          {categorias.map((categoria) => (
             <Pressable
               key={categoria.id}
               style={styles.tileWrapper}
-              onPress={() => setCategoriaId(String(categoria.id))}
+              onPress={() => setCategoriaId(categoria.id)}
             >
               <View style={{ pointerEvents: 'none' }}>
                 <CategoryTile categoria={categoria} count={categoria.cantidad} />
