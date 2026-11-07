@@ -8,9 +8,20 @@ import { diasParaCaducar } from '@/theme/dates';
 import { type } from '@/theme/typography';
 import type { CategoryId } from '@/theme/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type ListRenderItemInfo,
+} from 'react-native';
+import type { Producto } from '@/theme/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const keyExtractorProducto = (producto: Producto) => producto.id;
 
 export default function CategoriasScreen() {
   const { productos, categorias, errorDatos } = useDespensa();
@@ -28,6 +39,10 @@ export default function CategoriasScreen() {
       .filter((producto) => producto.categoria === categoriaSel.id)
       .sort((a, b) => diasParaCaducar(a.fechaCaducidad) - diasParaCaducar(b.fechaCaducidad));
   }, [productos, categoriaSel]);
+  const renderProducto = useCallback(
+    ({ item }: ListRenderItemInfo<Producto>) => <ProductListItem producto={item} />,
+    [],
+  );
 
   // Vista de detalle: productos de la categoría seleccionada
   if (categoriaSel) {
@@ -50,8 +65,8 @@ export default function CategoriasScreen() {
 
           <FlatList
             data={productosDeCategoria}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => <ProductListItem producto={item} />}
+            keyExtractor={keyExtractorProducto}
+            renderItem={renderProducto}
             contentContainerStyle={{ paddingBottom: 40 }}
             ListEmptyComponent={
               <View style={styles.empty}>

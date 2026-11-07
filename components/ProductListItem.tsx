@@ -4,6 +4,7 @@ import { diasParaCaducar, formatearFecha } from '@/theme/dates';
 import type { Producto } from '@/theme/types';
 import { fonts, type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 const tonePalette: Record<string, string> = {
@@ -18,7 +19,7 @@ type Props = {
   onPress?: () => void;
 };
 
-export function ProductListItem({ producto, onPress }: Props) {
+export const ProductListItem = memo(function ProductListItem({ producto, onPress }: Props) {
   const categoria = getCategoria(producto.categoria);
   const dias = diasParaCaducar(producto.fechaCaducidad);
   const porVencer = dias <= 5;
@@ -42,7 +43,7 @@ export function ProductListItem({ producto, onPress }: Props) {
       <MaterialCommunityIcons name="chevron-right" size={22} color={colors.inkMuted} />
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {

@@ -163,9 +163,12 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let cancelarProductos: (() => void) | undefined;
+    let cancelarLista: (() => void) | undefined;
+
     try {
       const db = getFirebaseDb();
-      const unsubProductos = onSnapshot(
+      cancelarProductos = onSnapshot(
         collection(db, 'usuarios', uid, 'productos'),
         (snap) => {
           const datos = snap.docs
@@ -185,7 +188,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
         },
       );
 
-      const unsubLista = onSnapshot(
+      cancelarLista = onSnapshot(
         collection(db, 'usuarios', uid, 'listaCompras'),
         (snap) => {
           const datos = snap.docs
@@ -206,10 +209,12 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       );
 
       return () => {
-        unsubProductos();
-        unsubLista();
+        cancelarProductos?.();
+        cancelarLista?.();
       };
     } catch (error) {
+      cancelarProductos?.();
+      cancelarLista?.();
       logger.error('Conexión con Firestore', error);
       setErrorDatos('No se pudieron abrir tus datos. Revisa la configuración y las reglas de Firestore.');
     }

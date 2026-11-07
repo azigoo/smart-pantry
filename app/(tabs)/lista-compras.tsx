@@ -1,5 +1,6 @@
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ErrorMessage } from '@/components/ErrorMessage';
+import { ShoppingListRow } from '@/components/ShoppingListRow';
 import { useDespensa, type Producto } from '@/context/DespensaContext';
 import { colors } from '@/theme/colors';
 import { aClave } from '@/theme/fechaLocal';
@@ -9,7 +10,7 @@ import { type } from '@/theme/typography';
 import { validarItemCompra, validarNuevoProducto } from '@/theme/validators';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -28,6 +29,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const DANGER = '#C0392B';
 
 const idCategoria = (categoria: Category): CategoryId => categoria.id;
+const keyExtractorItem = (item: ItemCompra) => item.id;
 
 const formatearFecha = (d: Date) =>
   d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -70,21 +72,21 @@ export default function ListaComprasScreen() {
   const [compraCat, setCompraCat] = useState<CategoryId | null>(null);
   const [mostrarPicker, setMostrarPicker] = useState(false);
 
-  const pendientes = items.filter((i) => !i.comprado).length;
-  const comprados = items.length - pendientes;
+  const { pendientes, comprados, itemsOrdenados } = useMemo(() => {
+    const pendientes = items.reduce((total, item) => total + Number(!item.comprado), 0);
+    return {
+      pendientes,
+      comprados: items.length - pendientes,
+      itemsOrdenados: [...items].sort((a, b) => Number(a.comprado) - Number(b.comprado)),
+    };
+  }, [items]);
 
-  // Pendientes arriba, comprados al final
-  const itemsOrdenados = useMemo(
-    () => [...items].sort((a, b) => Number(a.comprado) - Number(b.comprado)),
-    [items]
-  );
-
-  function marcarComprado(id: string, valor: boolean) {
+  const marcarComprado = useCallback((id: string, valor: boolean) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, comprado: valor } : i)));
-  }
+  }, [setItems]);
 
   // Al marcar como comprado se ofrece pasarlo a la despensa; al desmarcar solo se revierte
-  function toggleItem(item: ItemCompra) {
+  const toggleItem = useCallback((item: ItemCompra) => {
     if (item.comprado) {
       marcarComprado(item.id, false);
       return;
@@ -95,10 +97,9 @@ export default function ListaComprasScreen() {
     const fecha = new Date();
     fecha.setDate(fecha.getDate() + 7);
     setCompraFecha(fecha);
-    const cat = categorias.find((categoria) => categoria.id === item.categoria);
-    setCompraCat(cat ? idCategoria(cat) : null);
+    setCompraCat(item.categoria ?? null);
     setMostrarPicker(false);
-  }
+  }, [marcarComprado]);
 
   function cerrarCompra() {
     setCompraItem(null);
@@ -165,11 +166,11 @@ export default function ListaComprasScreen() {
     setNuevo('');
   }
 
-  function eliminarItem(item: ItemCompra) {
+  const eliminarItem = useCallback((item: ItemCompra) => {
     confirmar('Eliminar producto', `¿Quitar "${item.nombre}" de la lista?`, 'Eliminar', () =>
       setItems((prev) => prev.filter((i) => i.id !== item.id))
     );
-  }
+  }, [setItems]);
 
   function limpiarComprados() {
     confirmar(
@@ -180,13 +181,13 @@ export default function ListaComprasScreen() {
     );
   }
 
-  function abrirEditar(item: ItemCompra) {
+  const abrirEditar = useCallback((item: ItemCompra) => {
     setEditandoId(item.id);
     setEditNombre(item.nombre);
     setEditCantidad(String(item.cantidad ?? '1'));
     setErrorFormulario(null);
     setModalVisible(true);
-  }
+  }, []);
 
   function cerrarModal() {
     setModalVisible(false);
@@ -214,34 +215,17 @@ export default function ListaComprasScreen() {
     setEditCantidad(String(Math.max(1, base + delta)));
   }
 
-  const renderItem = ({ item }: { item: ItemCompra }) => {
-    return (
-      <View style={[styles.row, item.comprado && styles.rowDone]}>
-        <Pressable onPress={() => toggleItem(item)} hitSlop={8}>
-          <MaterialCommunityIcons
-            name={item.comprado ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
-            size={26}
-            color={item.comprado ? colors.secondary : colors.inkMuted}
-          />
-        </Pressable>
-
-        <Pressable style={styles.rowInfo} onPress={() => abrirEditar(item)}>
-          <Text style={[styles.rowTitle, item.comprado && styles.rowTitleDone]}>{item.nombre}</Text>
-          <Text style={styles.rowQty}>
-            Cantidad: {item.cantidad}
-            {item.unidad ? ` ${item.unidad}` : ''}
-          </Text>
-        </Pressable>
-
-        <Pressable style={styles.iconBtn} onPress={() => abrirEditar(item)} hitSlop={8}>
-          <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.inkMuted} />
-        </Pressable>
-        <Pressable style={styles.iconBtn} onPress={() => eliminarItem(item)} hitSlop={8}>
-          <MaterialCommunityIcons name="trash-can-outline" size={22} color={DANGER} />
-        </Pressable>
-      </View>
-    );
-  };
+  const renderItem = useCallback(
+    ({ item }: { item: ItemCompra }) => (
+      <ShoppingListRow
+        item={item}
+        onToggle={toggleItem}
+        onEdit={abrirEditar}
+        onDelete={eliminarItem}
+      />
+    ),
+    [abrirEditar, eliminarItem, toggleItem],
+  );
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -274,7 +258,7 @@ export default function ListaComprasScreen() {
 
         <FlatList
           data={itemsOrdenados}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractorItem}
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
@@ -469,41 +453,6 @@ const styles = StyleSheet.create({
     ...type.body,
     fontSize: 13,
     color: colors.inkMuted,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    marginBottom: 10,
-  },
-  rowDone: {
-    opacity: 0.6,
-  },
-  rowInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  rowTitle: {
-    ...type.body,
-    color: colors.ink,
-    fontWeight: '600',
-  },
-  rowTitleDone: {
-    textDecorationLine: 'line-through',
-    color: colors.inkMuted,
-  },
-  rowQty: {
-    ...type.body,
-    fontSize: 13,
-    color: colors.inkMuted,
-  },
-  iconBtn: {
-    padding: 4,
   },
   empty: {
     alignItems: 'center',

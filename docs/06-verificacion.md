@@ -174,3 +174,33 @@ para poder verificarse por completo (RU-03, RU-06, RU-09, RU-10). Este resultado
 consistente con el alcance declarado del proyecto en su estado actual (frontend con
 datos de ejemplo) y deberá actualizarse conforme avance la integración con la API y la
 base de datos.
+
+---
+
+### 6.11 Revisión estática de eficiencia (Fase 2)
+
+Comparación del código en el commit previo a esta fase (`1f39be5`) con el código
+actual. Las cifras siguientes son recuentos estáticos de implementaciones; no son
+mediciones de tiempo de ejecución ni de facturación de Firebase.
+
+| Indicador inspeccionable | Antes | Después |
+|---|---:|---:|
+| Listas de productos/compras/categorías implementadas con `FlatList` | 3/3 | 3/3 |
+| `renderItem` creado directamente en el render de pantalla | 3 | 0; los 3 usan `useCallback` |
+| `keyExtractor` estable en esas listas | 0/3 | 3/3 |
+| Filas de listas memorizadas (`React.memo`) | 0 | 3: productos, compras y resumen de producto |
+| Escuchas Firestore por usuario autenticado | 2 | 2: una para `productos` y otra para `listaCompras` |
+| Llamadas `getDocs` adicionales encontradas | 0 | 0 |
+
+Evidencia: `app/(tabs)/productos.tsx`, `app/(tabs)/lista-compras.tsx`,
+`app/(tabs)/categorias.tsx`, `components/InventoryProductRow.tsx`,
+`components/ShoppingListRow.tsx`, `components/ProductListItem.tsx` y
+`context/DespensaContext.tsx`. Los cálculos de pendientes/comprados ahora comparten
+un recorrido de la lista; la ordenación conserva su paso independiente.
+
+La escucha de cada colección sigue cancelándose al desmontar o cambiar de usuario.
+También se liberan las escuchas que ya se alcanzaron a crear si falla la inicialización
+de la segunda. No se midieron renders reales, latencia, consumo de dispositivo ni
+lecturas facturables: para ello se requiere ejecutar la app y observar un emulador o
+proyecto Firebase configurado, y las pruebas locales de esta fase no realizan esas
+conexiones.

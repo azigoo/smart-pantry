@@ -1,8 +1,9 @@
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { InventoryProductRow } from '@/components/InventoryProductRow';
 import { useDespensa, type Producto } from '@/context/DespensaContext';
 import { ErrorMessage } from '@/components/ErrorMessage';
 import { colors } from '@/theme/colors';
-import { diasParaCaducar } from '@/theme/dates';
+import { getCategoria } from '@/theme/categoryIcons';
 import { aClave, desdeClave } from '@/theme/fechaLocal';
 import { type } from '@/theme/typography';
 import type { Category, CategoryId } from '@/theme/types';
@@ -10,7 +11,7 @@ import { validarNuevoProducto } from '@/theme/validators';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -26,10 +27,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const DANGER = '#C0392B';
-const WARNING = '#E67E22';
-
 const idCategoria = (categoria: Category): CategoryId => categoria.id;
+const keyExtractorProducto = (producto: Producto) => producto.id;
 const UNIDADES = ['pzas', 'kg', 'litros'] as const;
 
 const formatearFecha = (clave?: string) => {
@@ -64,11 +63,12 @@ export default function ProductosScreen() {
     );
   }, [busqueda, productos]);
 
-  const nombreCategoria = (p: Producto) => {
-    return categorias.find((categoria) => categoria.id === p.categoria)?.nombre ?? null;
-  };
+  const nombreCategoria = useCallback(
+    (p: Producto) => (p.categoria ? getCategoria(p.categoria).nombre : null),
+    [],
+  );
 
-  const abrirNuevo = () => {
+  const abrirNuevo = useCallback(() => {
     setEditandoId(null);
     setNombre('');
     setCantidad('1');
@@ -78,40 +78,39 @@ export default function ProductosScreen() {
     setMostrarPicker(false);
     setErrorFormulario(null);
     setModalVisible(true);
-  };
+  }, []);
 
   useEffect(() => {
     if (nuevo === '1') {
       abrirNuevo();
       router.setParams({ nuevo: '' });
     }
-  }, [nuevo]);
+  }, [abrirNuevo, nuevo]);
 
-  const abrirEditar = (p: Producto) => {
+  const abrirEditar = useCallback((p: Producto) => {
     setEditandoId(String(p.id));
     setNombre(p.nombre);
     setCantidad(String(p.cantidad));
     setUnidad(p.unidad);
     setFecha(p.fechaCaducidad ? desdeClave(p.fechaCaducidad) : new Date());
-    const cat = categorias.find((categoria) => categoria.id === p.categoria);
-    setCategoriaSel(cat ? idCategoria(cat) : null);
+    setCategoriaSel(p.categoria ?? null);
     setMostrarPicker(false);
     setErrorFormulario(null);
     setModalVisible(true);
-  };
+  }, []);
 
-  const cerrarModal = () => {
+  const cerrarModal = useCallback(() => {
     setModalVisible(false);
     setMostrarPicker(false);
-  };
+  }, []);
 
-  const ajustarCantidad = (delta: number) => {
+  const ajustarCantidad = useCallback((delta: number) => {
     const actual = parseInt(cantidad, 10);
     const base = Number.isNaN(actual) ? 1 : actual;
     setCantidad(String(Math.max(1, base + delta)));
-  };
+  }, [cantidad]);
 
-  const guardar = () => {
+  const guardar = useCallback(() => {
     const fechaTexto = aClave(fecha).split('-').reverse().join('/');
     const validacion = validarNuevoProducto({ nombre, cantidad, fecha: fechaTexto });
     if (!validacion.valido) {
@@ -150,9 +149,9 @@ export default function ProductosScreen() {
       setProductos((prev) => [nuevoProducto, ...prev]);
     }
     cerrarModal();
-  };
+  }, [cantidad, categoriaSel, editandoId, fecha, nombre, setProductos, unidad]);
 
-  const confirmarEliminar = (p: Producto) => {
+  const confirmarEliminar = useCallback((p: Producto) => {
     const borrar = () => setProductos((prev) => prev.filter((x) => x.id !== p.id));
 
     if (Platform.OS === 'web') {
@@ -166,9 +165,9 @@ export default function ProductosScreen() {
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: borrar },
     ]);
-  };
+  }, [setProductos]);
 
-  const seAcabo = (p: Producto) => {
+  const seAcabo = useCallback((p: Producto) => {
     const mover = () => {
       setListaCompras((prev) => {
         const yaEsta = prev.some(
@@ -204,58 +203,25 @@ export default function ProductosScreen() {
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Pasar a compras', onPress: mover },
     ]);
-  };
+  }, [setListaCompras, setProductos]);
 
   const onCambioFecha = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') setMostrarPicker(false);
     if (event.type === 'set' && selected) setFecha(selected);
   };
 
-  const renderItem = ({ item }: { item: Producto }) => {
-    const dias = item.fechaCaducidad ? diasParaCaducar(item.fechaCaducidad) : null;
-    let estado = '';
-    let colorEstado: string = colors.inkMuted;
-
-    if (dias !== null) {
-      if (dias < 0) {
-        estado = `Caducó hace ${Math.abs(dias)} d`;
-        colorEstado = DANGER;
-      } else if (dias === 0) {
-        estado = 'Caduca hoy';
-        colorEstado = DANGER;
-      } else if (dias <= 3) {
-        estado = `Caduca en ${dias} d`;
-        colorEstado = WARNING;
-      } else {
-        estado = `Caduca en ${dias} d`;
-      }
-    }
-
-    const cat = nombreCategoria(item);
-    return (
-      <Pressable style={styles.card} onPress={() => abrirEditar(item)}>
-        <View style={styles.cardInfo}>
-          <Text style={styles.cardTitle}>
-            {item.nombre}
-            {item.cantidad ? `  ×${item.cantidad}${item.unidad ? ` ${item.unidad}` : ''}` : ''}
-          </Text>
-          {!!cat && <Text style={styles.cardCategory}>{cat}</Text>}
-          <Text style={styles.cardDate}>{formatearFecha(item.fechaCaducidad)}</Text>
-          {!!estado && <Text style={[styles.cardStatus, { color: colorEstado }]}>{estado}</Text>}
-        </View>
-
-        <Pressable style={styles.iconBtn} onPress={() => seAcabo(item)} hitSlop={8}>
-          <MaterialCommunityIcons name="cart-plus" size={22} color={colors.secondary} />
-        </Pressable>
-        <Pressable style={styles.iconBtn} onPress={() => abrirEditar(item)} hitSlop={8}>
-          <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.inkMuted} />
-        </Pressable>
-        <Pressable style={styles.iconBtn} onPress={() => confirmarEliminar(item)} hitSlop={8}>
-          <MaterialCommunityIcons name="trash-can-outline" size={22} color={DANGER} />
-        </Pressable>
-      </Pressable>
-    );
-  };
+  const renderItem = useCallback(
+    ({ item }: { item: Producto }) => (
+      <InventoryProductRow
+        producto={item}
+        nombreCategoria={nombreCategoria(item)}
+        onEditar={abrirEditar}
+        onSeAcabo={seAcabo}
+        onEliminar={confirmarEliminar}
+      />
+    ),
+    [abrirEditar, confirmarEliminar, nombreCategoria, seAcabo],
+  );
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -276,7 +242,7 @@ export default function ProductosScreen() {
 
         <FlatList
           data={productosFiltrados}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={keyExtractorProducto}
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 100 }}
           ListEmptyComponent={
@@ -433,44 +399,6 @@ const styles = StyleSheet.create({
     flex: 1,
     ...type.body,
     color: colors.ink,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    marginBottom: 10,
-  },
-  cardInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  cardTitle: {
-    ...type.body,
-    color: colors.ink,
-    fontWeight: '600',
-  },
-  cardCategory: {
-    ...type.body,
-    fontSize: 12,
-    color: colors.secondary,
-  },
-  cardDate: {
-    ...type.body,
-    color: colors.inkMuted,
-    fontSize: 13,
-  },
-  cardStatus: {
-    ...type.body,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  iconBtn: {
-    padding: 6,
-    marginLeft: 4,
   },
   empty: {
     alignItems: 'center',

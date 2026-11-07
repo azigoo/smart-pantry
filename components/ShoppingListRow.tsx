@@ -2,58 +2,82 @@ import { colors } from '@/theme/colors';
 import type { ItemCompra } from '@/theme/types';
 import { type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
   item: ItemCompra;
-  onToggle: (id: string) => void;
+  onToggle: (item: ItemCompra) => void;
+  onEdit: (item: ItemCompra) => void;
+  onDelete: (item: ItemCompra) => void;
 };
 
-export function ShoppingListRow({ item, onToggle }: Props) {
+export const ShoppingListRow = memo(function ShoppingListRow({
+  item,
+  onToggle,
+  onEdit,
+  onDelete,
+}: Props) {
   return (
-    <Pressable onPress={() => onToggle(item.id)} style={styles.row}>
-      <View style={[styles.checkbox, item.comprado && styles.checkboxChecked]}>
-        {item.comprado && <MaterialCommunityIcons name="check" size={16} color={colors.surface} />}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[type.bodyMedium, item.comprado && styles.strike]}>{item.nombre}</Text>
-        <Text style={[styles.cantidad, item.comprado && styles.strike]}>{item.cantidad}</Text>
-      </View>
-    </Pressable>
+    <View style={[styles.row, item.comprado && styles.rowDone]}>
+      <Pressable onPress={() => onToggle(item)} hitSlop={8}>
+        <MaterialCommunityIcons
+          name={item.comprado ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+          size={26}
+          color={item.comprado ? colors.secondary : colors.inkMuted}
+        />
+      </Pressable>
+      <Pressable style={styles.rowInfo} onPress={() => onEdit(item)}>
+        <Text style={[styles.rowTitle, item.comprado && styles.rowTitleDone]}>{item.nombre}</Text>
+        <Text style={styles.rowQty}>
+          Cantidad: {item.cantidad}
+          {item.unidad ? ` ${item.unidad}` : ''}
+        </Text>
+      </Pressable>
+      <Pressable style={styles.iconBtn} onPress={() => onEdit(item)} hitSlop={8}>
+        <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.inkMuted} />
+      </Pressable>
+      <Pressable style={styles.iconBtn} onPress={() => onDelete(item)} hitSlop={8}>
+        <MaterialCommunityIcons name="trash-can-outline" size={22} color="#C0392B" />
+      </Pressable>
+    </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
+    padding: 14,
+    marginBottom: 10,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  rowDone: {
+    opacity: 0.6,
   },
-  checkboxChecked: {
-    backgroundColor: colors.secondary,
+  rowInfo: {
+    flex: 1,
+    gap: 2,
   },
-  cantidad: {
-    ...type.caption,
-    color: colors.inkMuted,
-    marginTop: 2,
+  rowTitle: {
+    ...type.body,
+    color: colors.ink,
+    fontWeight: '600',
   },
-  strike: {
-    color: colors.inkMuted,
+  rowTitleDone: {
     textDecorationLine: 'line-through',
+    color: colors.inkMuted,
+  },
+  rowQty: {
+    ...type.body,
+    fontSize: 13,
+    color: colors.inkMuted,
+  },
+  iconBtn: {
+    padding: 4,
   },
 });
