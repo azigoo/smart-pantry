@@ -57,7 +57,9 @@ export const InventoryProductRow = memo(function InventoryProductRow({
       >
         <Text style={styles.cardTitle}>
           {producto.nombre}
-          {producto.cantidad ? `  ×${producto.cantidad}${producto.unidad ? ` ${producto.unidad}` : ''}` : ''}
+          {producto.cantidad
+            ? `  ×${producto.cantidad}${producto.unidad ? ` ${producto.unidad}` : ''}`
+            : ''}
         </Text>
         {!!nombreCategoria && <Text style={styles.cardCategory}>{nombreCategoria}</Text>}
         <Text style={styles.cardDate}>{formatearFecha(producto.fechaCaducidad)}</Text>

@@ -19,11 +19,11 @@ export default function InicioScreen() {
 
   const porVencer = useMemo(
     () => productos.filter((p) => diasParaCaducar(p.fechaCaducidad) <= 5).length,
-    [productos]
+    [productos],
   );
   const pendientesCompra = useMemo(
     () => listaCompras.filter((i) => !i.comprado).length,
-    [listaCompras]
+    [listaCompras],
   );
   const proximosAVencer = useMemo(
     () =>
@@ -31,7 +31,7 @@ export default function InicioScreen() {
         .slice()
         .sort((a, b) => diasParaCaducar(a.fechaCaducidad) - diasParaCaducar(b.fechaCaducidad))
         .slice(0, 4),
-    [productos]
+    [productos],
   );
 
   // Solo cuentan las categorías que tienen al menos un producto

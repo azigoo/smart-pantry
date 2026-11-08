@@ -93,7 +93,9 @@ export async function programarAvisos(productos: ProductoAviso[], diasAntes: num
         avisos.push({
           fecha: previo,
           cuerpo:
-            diasAntes === 1 ? `${p.nombre} caduca mañana` : `${p.nombre} caduca en ${diasAntes} días`,
+            diasAntes === 1
+              ? `${p.nombre} caduca mañana`
+              : `${p.nombre} caduca en ${diasAntes} días`,
         });
       } else if (diaCaduca > ahora) {
         avisos.push({ fecha: diaCaduca, cuerpo: `${p.nombre} caduca hoy` });

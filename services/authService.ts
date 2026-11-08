@@ -35,10 +35,7 @@ const MENSAJES_DE_ERROR: Record<string, string> = {
 
 function traducirError(error: unknown): ErrorAutenticacion {
   const codigo =
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof error.code === 'string'
+    typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
       ? error.code
       : 'auth/desconocido';
   logger.error('Autenticación', error);

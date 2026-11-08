@@ -238,3 +238,31 @@ usuarios reales ni dispositivos físicos.
 
 Verificación de cierre de fase: `npx tsc --noEmit` terminó sin errores y `npm test`
 aprobó 3 suites con 17 pruebas.
+
+### 6.13 Estructuración y herramientas de mantenimiento (Fase 4)
+
+Las pantallas de Productos, Lista de compras y Perfil ahora delegan la presentación
+de sus listas, formularios y diálogos a componentes especializados. Las operaciones
+de lectura, conversión y sincronización de Firestore se concentraron en
+`services/despensaFirestore.ts`; las pantallas consumen el contexto y no importan
+Firestore. Se eliminó la duplicación del helper `idCategoria`.
+
+Recuento de líneas observado con `git show cc2cf03:<archivo>` (antes) y
+`Get-Content ... | Measure-Object -Line` (después):
+
+| Archivo | Antes | Después |
+|---|---:|---:|
+| `app/(tabs)/productos.tsx` | 582 | 297 |
+| `app/(tabs)/lista-compras.tsx` | 645 | 291 |
+| `app/(tabs)/perfil.tsx` | 437 | 263 |
+| `context/DespensaContext.tsx` | 339 | 284 |
+
+Se configuraron ESLint con `eslint-config-expo` para Expo SDK 57 y Prettier con
+`eslint-plugin-prettier`, `.prettierrc.json`, `.prettierignore` y los scripts
+`npm run lint` y `npm run format`. Ambos comandos finalizaron correctamente; ESLint
+reportó cero errores y cero advertencias. `npx tsc --noEmit` finalizó sin errores y
+`npm test` aprobó 3 suites con 17 pruebas.
+
+`theme/mockData.ts` se conserva porque sigue alimentando el modo demo, el catálogo
+de categorías, la pantalla alternativa de alta de producto y la prueba de iconos de
+categoría. No es un archivo obsoleto que pueda eliminarse en esta fase.

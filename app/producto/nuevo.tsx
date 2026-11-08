@@ -58,9 +58,7 @@ export default function NuevoProductoScreen() {
               accessibilityState={{ selected: categoriaSeleccionada === categoria.id }}
               accessibilityLabel={`Categoría ${categoria.nombre}`}
             >
-              <CategoryTile
-                categoria={categoria}
-              />
+              <CategoryTile categoria={categoria} />
               {categoriaSeleccionada === categoria.id && (
                 <View style={styles.selectedRing} pointerEvents="none" />
               )}

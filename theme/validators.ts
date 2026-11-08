@@ -102,7 +102,12 @@ function validarFechaCaducidad(fecha: string): string[] {
 function validarCantidadProducto(cantidad: string): string[] {
   const limpia = cantidad.trim();
   const numero = Number(limpia);
-  if (!/^\d+$/.test(limpia) || !Number.isSafeInteger(numero) || numero < 1 || numero > MAX_CANTIDAD) {
+  if (
+    !/^\d+$/.test(limpia) ||
+    !Number.isSafeInteger(numero) ||
+    numero < 1 ||
+    numero > MAX_CANTIDAD
+  ) {
     return [`La cantidad debe ser un número entero entre 1 y ${MAX_CANTIDAD}.`];
   }
   return [];
@@ -116,12 +121,7 @@ export function validarItemCompra(input: {
   const cantidad = input.cantidad.trim();
   const partes = /^(\d+(?:[.,]\d+)?)(?:\s+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)?$/.exec(cantidad);
   const numero = partes ? Number(partes[1].replace(',', '.')) : Number.NaN;
-  if (
-    !partes ||
-    !Number.isFinite(numero) ||
-    numero <= 0 ||
-    numero > MAX_CANTIDAD
-  ) {
+  if (!partes || !Number.isFinite(numero) || numero <= 0 || numero > MAX_CANTIDAD) {
     errores.push(`La cantidad debe ser mayor a 0 y no superar ${MAX_CANTIDAD}.`);
   }
   return resultado(errores);

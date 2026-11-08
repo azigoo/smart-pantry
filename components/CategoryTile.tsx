@@ -24,10 +24,16 @@ export function CategoryTile({ categoria, count, onPress }: Props) {
       onPress={onPress}
       accessible={!!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress
-        ? `${categoria.nombre}${typeof count === 'number' ? `, ${count} productos` : ''}`
-        : undefined}
-      style={({ pressed }) => [styles.tile, { backgroundColor: palette.bg }, pressed && { opacity: 0.8 }]}
+      accessibilityLabel={
+        onPress
+          ? `${categoria.nombre}${typeof count === 'number' ? `, ${count} productos` : ''}`
+          : undefined
+      }
+      style={({ pressed }) => [
+        styles.tile,
+        { backgroundColor: palette.bg },
+        pressed && { opacity: 0.8 },
+      ]}
     >
       <MaterialCommunityIcons name={categoria.icono} size={26} color={palette.text} />
       <Text style={[type.bodyMedium, { color: palette.text }]}>{categoria.nombre}</Text>

@@ -1,5 +1,10 @@
 import { useAuth } from '@/context/AuthContext';
-import { firebaseEstaConfigurado, getFirebaseDb } from '@/services/firebase';
+import {
+  observarListaCompras,
+  observarProductos,
+  sincronizarColeccion,
+} from '@/services/despensaFirestore';
+import { firebaseEstaConfigurado } from '@/services/firebase';
 import { programarAvisos } from '@/services/notificaciones';
 import {
   categorias as categoriasMock,
@@ -9,14 +14,6 @@ import {
 import type { Category, CategoryId, ItemCompra, Producto as ProductoModelo } from '@/theme/types';
 import { logger } from '@/services/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  setDoc,
-  type Firestore,
-} from 'firebase/firestore';
 import {
   createContext,
   ReactNode,
@@ -53,63 +50,6 @@ const DespensaContext = createContext<DespensaContextValue | null>(null);
 const CLAVE_DIAS_AVISO = 'diasAviso';
 
 // Firestore no acepta valores `undefined`, así que se eliminan antes de guardar
-const limpiar = <T,>(item: T): T => JSON.parse(JSON.stringify(item));
-
-type ConId = { id: string };
-
-// Ordena de más nuevo a más viejo (los ids nuevos son Date.now())
-const masNuevoPrimero = <T extends ConId>(lista: T[]): T[] =>
-  [...lista].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
-
-function esObjeto(valor: unknown): valor is Record<string, unknown> {
-  return typeof valor === 'object' && valor !== null;
-}
-
-function normalizarCategoria(valor: unknown): CategoryId | undefined {
-  if (typeof valor !== 'string') return undefined;
-  return categoriasMock.find((categoria) => categoria.id === valor || categoria.nombre === valor)?.id;
-}
-
-function productoDesdeFirestore(id: string, valor: unknown): Producto | null {
-  if (!esObjeto(valor)) return null;
-  if (
-    typeof valor.nombre !== 'string' ||
-    typeof valor.cantidad !== 'number' ||
-    !Number.isFinite(valor.cantidad) ||
-    valor.cantidad < 1 ||
-    typeof valor.fechaCaducidad !== 'string'
-  ) {
-    return null;
-  }
-  return {
-    id,
-    nombre: valor.nombre,
-    cantidad: valor.cantidad,
-    unidad: typeof valor.unidad === 'string' ? valor.unidad : 'pzas',
-    fechaCaducidad: valor.fechaCaducidad,
-    categoria: normalizarCategoria(valor.categoria),
-  };
-}
-
-function itemCompraDesdeFirestore(id: string, valor: unknown): ItemCompra | null {
-  if (!esObjeto(valor)) return null;
-  if (
-    typeof valor.nombre !== 'string' ||
-    (typeof valor.cantidad !== 'string' && typeof valor.cantidad !== 'number') ||
-    typeof valor.comprado !== 'boolean'
-  ) {
-    return null;
-  }
-  return {
-    id,
-    nombre: valor.nombre,
-    cantidad: String(valor.cantidad),
-    comprado: valor.comprado,
-    unidad: typeof valor.unidad === 'string' ? valor.unidad : undefined,
-    categoria: normalizarCategoria(valor.categoria),
-  };
-}
-
 export function DespensaProvider({ children }: { children: ReactNode }) {
   const { usuario } = useAuth();
   const uid: string | undefined = usuario?.uid;
@@ -117,10 +57,10 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
 
   // Con Firestore se empieza vacío; sin Firebase (modo demo) se usan los datos de ejemplo
   const [productos, setProductosState] = useState<Producto[]>(() =>
-    usaFirestore ? [] : productosMock
+    usaFirestore ? [] : productosMock,
   );
   const [listaCompras, setListaComprasState] = useState<ItemCompra[]>(() =>
-    usaFirestore ? [] : listaMock
+    usaFirestore ? [] : listaMock,
   );
   const [nombreUsuario, setNombreUsuario] = useState<string | null>(null);
   const [diasAviso, setDiasAvisoState] = useState<DiasAviso>(3);
@@ -183,49 +123,47 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
 
     let cancelarProductos: (() => void) | undefined;
     let cancelarLista: (() => void) | undefined;
-
     try {
-      const db = getFirebaseDb();
-      cancelarProductos = onSnapshot(
-        collection(db, 'usuarios', uid, 'productos'),
-        (snap) => {
-          const datos = snap.docs
-            .map((documento) => productoDesdeFirestore(documento.id, documento.data()))
-            .filter((producto): producto is Producto => producto !== null);
-          if (datos.length !== snap.size) {
+      cancelarProductos = observarProductos(
+        uid,
+        (ordenados, cantidadInvalida) => {
+          if (cantidadInvalida) {
             logger.warn('Firestore', 'Se omitieron documentos de producto con datos incompletos.');
-            setErrorDatos('Algunos productos no se pudieron mostrar porque sus datos están incompletos.');
+            setErrorDatos(
+              'Algunos productos no se pudieron mostrar porque sus datos están incompletos.',
+            );
           }
-          const ordenados = masNuevoPrimero(datos);
           productosRef.current = ordenados;
           setProductosState(ordenados);
           marcarColeccionCargada('productos');
         },
-        (error: Error) => {
+        (error) => {
           logger.error('Lectura de productos', error);
-          setErrorDatos('No se pudieron cargar tus productos. Revisa tu conexión y las reglas de Firestore.');
+          setErrorDatos(
+            'No se pudieron cargar tus productos. Revisa tu conexión y las reglas de Firestore.',
+          );
           marcarColeccionCargada('productos');
         },
       );
 
-      cancelarLista = onSnapshot(
-        collection(db, 'usuarios', uid, 'listaCompras'),
-        (snap) => {
-          const datos = snap.docs
-            .map((documento) => itemCompraDesdeFirestore(documento.id, documento.data()))
-            .filter((item): item is ItemCompra => item !== null);
-          if (datos.length !== snap.size) {
+      cancelarLista = observarListaCompras(
+        uid,
+        (ordenados, cantidadInvalida) => {
+          if (cantidadInvalida) {
             logger.warn('Firestore', 'Se omitieron documentos de compra con datos incompletos.');
-            setErrorDatos('Algunos artículos no se pudieron mostrar porque sus datos están incompletos.');
+            setErrorDatos(
+              'Algunos artículos no se pudieron mostrar porque sus datos están incompletos.',
+            );
           }
-          const ordenados = masNuevoPrimero(datos);
           listaRef.current = ordenados;
           setListaComprasState(ordenados);
           marcarColeccionCargada('listaCompras');
         },
-        (error: Error) => {
+        (error) => {
           logger.error('Lectura de compras', error);
-          setErrorDatos('No se pudo cargar tu lista de compras. Revisa tu conexión y las reglas de Firestore.');
+          setErrorDatos(
+            'No se pudo cargar tu lista de compras. Revisa tu conexión y las reglas de Firestore.',
+          );
           marcarColeccionCargada('listaCompras');
         },
       );
@@ -238,7 +176,9 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       cancelarProductos?.();
       cancelarLista?.();
       logger.error('Conexión con Firestore', error);
-      setErrorDatos('No se pudieron abrir tus datos. Revisa la configuración y las reglas de Firestore.');
+      setErrorDatos(
+        'No se pudieron abrir tus datos. Revisa la configuración y las reglas de Firestore.',
+      );
       setCargandoDatos(false);
     }
   }, [uid, usaFirestore]);
@@ -250,55 +190,27 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
 
   // Compara la lista anterior con la nueva y guarda solo lo que cambió
   const sincronizar = useCallback(
-    <T extends ConId>(coleccion: string, prev: T[], next: T[]) => {
+    <T extends { id: string }>(coleccion: 'productos' | 'listaCompras', prev: T[], next: T[]) => {
       if (!usaFirestore || !uid) return;
-      let db: Firestore;
-      try {
-        db = getFirebaseDb();
-      } catch (error) {
-        logger.error('Conexión con Firestore', error);
-        setErrorDatos('No se pudo conectar con Firestore. Revisa la configuración del proyecto.');
-        return;
-      }
-
-      const anteriores = new Map(prev.map((i) => [String(i.id), JSON.stringify(limpiar(i))]));
-      const idsNuevos = new Set<string>();
-      const informarErrorEscritura = (error: unknown) => {
-        logger.error('Escritura en Firestore', error);
-        setErrorDatos('No se pudo guardar un cambio. Revisa tu conexión y las reglas de Firestore.');
-      };
-      const informarErrorEliminacion = (error: unknown) => {
-        logger.error('Eliminación en Firestore', error);
-        setErrorDatos('No se pudo eliminar un dato. Revisa tu conexión y las reglas de Firestore.');
-      };
-
-      next.forEach((item) => {
-        const id = String(item.id);
-        idsNuevos.add(id);
-        const datos = limpiar(item);
-        if (anteriores.get(id) !== JSON.stringify(datos)) {
-          try {
-            void setDoc(doc(db, 'usuarios', uid, coleccion, id), { ...datos, id }).catch(
-              informarErrorEscritura,
-            );
-          } catch (error) {
-            informarErrorEscritura(error);
-          }
-        }
-      });
-
-      prev.forEach((item) => {
-        const id = String(item.id);
-        if (!idsNuevos.has(id)) {
-          try {
-            void deleteDoc(doc(db, 'usuarios', uid, coleccion, id)).catch(informarErrorEliminacion);
-          } catch (error) {
-            informarErrorEliminacion(error);
-          }
-        }
+      sincronizarColeccion(uid, coleccion, prev, next, (operacion, error) => {
+        logger.error(
+          operacion === 'conexion'
+            ? 'Conexión con Firestore'
+            : operacion === 'guardar'
+              ? 'Escritura en Firestore'
+              : 'Eliminación en Firestore',
+          error,
+        );
+        setErrorDatos(
+          operacion === 'conexion'
+            ? 'No se pudo conectar con Firestore. Revisa la configuración del proyecto.'
+            : operacion === 'guardar'
+              ? 'No se pudo guardar un cambio. Revisa tu conexión y las reglas de Firestore.'
+              : 'No se pudo eliminar un dato. Revisa tu conexión y las reglas de Firestore.',
+        );
       });
     },
-    [uid, usaFirestore]
+    [uid, usaFirestore],
   );
 
   // Mismas firmas que un setState normal, para que las pantallas no cambien
@@ -310,7 +222,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       setProductosState(next);
       sincronizar('productos', prev, next);
     },
-    [sincronizar]
+    [sincronizar],
   );
 
   const setListaCompras = useCallback<React.Dispatch<React.SetStateAction<ItemCompra[]>>>(
@@ -321,7 +233,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       setListaComprasState(next);
       sincronizar('listaCompras', prev, next);
     },
-    [sincronizar]
+    [sincronizar],
   );
 
   // El conteo de cada categoría se calcula a partir de los productos actuales
@@ -329,11 +241,9 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
     () =>
       categoriasMock.map((c) => ({
         ...c,
-        cantidad: productos.filter(
-          (p) => p.categoria === c.id
-        ).length,
+        cantidad: productos.filter((p) => p.categoria === c.id).length,
       })),
-    [productos]
+    [productos],
   );
 
   const value = useMemo(
@@ -361,7 +271,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       setDiasAviso,
       errorDatos,
       cargandoDatos,
-    ]
+    ],
   );
 
   return <DespensaContext.Provider value={value}>{children}</DespensaContext.Provider>;

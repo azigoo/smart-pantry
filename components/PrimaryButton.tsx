@@ -27,13 +27,7 @@ export function PrimaryButton({ label, onPress, variant = 'primary', style, disa
         style,
       ]}
     >
-      <Text
-        style={[
-          type.button,
-          styles.text,
-          variant === 'ghost' && { color: colors.primary },
-        ]}
-      >
+      <Text style={[type.button, styles.text, variant === 'ghost' && { color: colors.primary }]}>
         {label}
       </Text>
     </Pressable>

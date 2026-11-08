@@ -43,7 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         (error) => {
           logger.error('Restauración de sesión', error);
-          setErrorAutenticacion('No se pudo verificar tu sesión. Revisa tu conexión e intenta de nuevo.');
+          setErrorAutenticacion(
+            'No se pudo verificar tu sesión. Revisa tu conexión e intenta de nuevo.',
+          );
           setCargando(false);
         },
       );

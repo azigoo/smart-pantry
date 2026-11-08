@@ -11,11 +11,7 @@
     "experiments": {
       "typedRoutes": true
     },
-    "plugins": [
-      "expo-router",
-      "expo-font",
-      "@react-native-community/datetimepicker"
-    ],
+    "plugins": ["expo-router", "expo-font", "@react-native-community/datetimepicker"],
     "ios": {
       "supportsTablet": true
     },

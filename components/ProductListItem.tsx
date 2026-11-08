@@ -29,9 +29,11 @@ export const ProductListItem = memo(function ProductListItem({ producto, onPress
       onPress={onPress}
       accessible={!!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress
-        ? `${producto.nombre}, ${producto.cantidad} ${producto.unidad}, caduca ${formatearFecha(producto.fechaCaducidad)}`
-        : undefined}
+      accessibilityLabel={
+        onPress
+          ? `${producto.nombre}, ${producto.cantidad} ${producto.unidad}, caduca ${formatearFecha(producto.fechaCaducidad)}`
+          : undefined
+      }
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
     >
       <View style={[styles.icon, { backgroundColor: tonePalette[categoria.color] }]}>
@@ -40,7 +42,9 @@ export const ProductListItem = memo(function ProductListItem({ producto, onPress
       <View style={{ flex: 1 }}>
         <Text style={type.h3}>{producto.nombre}</Text>
         <Text style={styles.meta}>
-          {producto.cantidad}{producto.unidad ? ` ${producto.unidad}` : ''} · caduca {formatearFecha(producto.fechaCaducidad)}
+          {producto.cantidad}
+          {producto.unidad ? ` ${producto.unidad}` : ''} · caduca{' '}
+          {formatearFecha(producto.fechaCaducidad)}
         </Text>
       </View>
       {porVencer && (

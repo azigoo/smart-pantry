@@ -1,36 +1,21 @@
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { InventoryProductRow } from '@/components/InventoryProductRow';
+import { InventoryProductList } from '@/components/productos/InventoryProductList';
+import { ProductoFormModal } from '@/components/productos/ProductoFormModal';
+import { styles } from '@/components/productos/productosStyles';
 import { useDespensa, type Producto } from '@/context/DespensaContext';
 import { ErrorMessage } from '@/components/ErrorMessage';
 import { colors } from '@/theme/colors';
 import { getCategoria } from '@/theme/categoryIcons';
 import { aClave, desdeClave } from '@/theme/fechaLocal';
-import { type } from '@/theme/typography';
-import type { Category, CategoryId } from '@/theme/types';
+import type { CategoryId } from '@/theme/types';
 import { validarNuevoProducto } from '@/theme/validators';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Platform, Pressable, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const idCategoria = (categoria: Category): CategoryId => categoria.id;
-const keyExtractorProducto = (producto: Producto) => producto.id;
-const UNIDADES = ['pzas', 'kg', 'litros'] as const;
 
 const formatearFecha = (clave?: string) => {
   if (!clave) return 'Sin fecha';
@@ -42,14 +27,8 @@ const formatearFecha = (clave?: string) => {
 };
 
 export default function ProductosScreen() {
-  const {
-    productos,
-    setProductos,
-    categorias,
-    setListaCompras,
-    errorDatos,
-    cargandoDatos,
-  } = useDespensa();
+  const { productos, setProductos, categorias, setListaCompras, errorDatos, cargandoDatos } =
+    useDespensa();
   const { nuevo } = useLocalSearchParams<{ nuevo?: string }>();
   const [busqueda, setBusqueda] = useState('');
 
@@ -67,9 +46,7 @@ export default function ProductosScreen() {
 
   const productosFiltrados = useMemo(() => {
     if (!busqueda.trim()) return productos;
-    return productos.filter((p) =>
-      p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-    );
+    return productos.filter((p) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()));
   }, [busqueda, productos]);
 
   const nombreCategoria = useCallback(
@@ -92,9 +69,13 @@ export default function ProductosScreen() {
 
   useEffect(() => {
     if (nuevo === '1') {
-      abrirNuevo();
-      router.setParams({ nuevo: '' });
+      const task = setTimeout(() => {
+        abrirNuevo();
+        router.setParams({ nuevo: '' });
+      }, 0);
+      return () => clearTimeout(task);
     }
+    return undefined;
   }, [abrirNuevo, nuevo]);
 
   const abrirEditar = useCallback((p: Producto) => {
@@ -115,11 +96,14 @@ export default function ProductosScreen() {
     setMostrarPicker(false);
   }, []);
 
-  const ajustarCantidad = useCallback((delta: number) => {
-    const actual = parseInt(cantidad, 10);
-    const base = Number.isNaN(actual) ? 1 : actual;
-    setCantidad(String(Math.max(1, base + delta)));
-  }, [cantidad]);
+  const ajustarCantidad = useCallback(
+    (delta: number) => {
+      const actual = parseInt(cantidad, 10);
+      const base = Number.isNaN(actual) ? 1 : actual;
+      setCantidad(String(Math.max(1, base + delta)));
+    },
+    [cantidad],
+  );
 
   const guardar = useCallback(() => {
     const fechaTexto = aClave(fecha).split('-').reverse().join('/');
@@ -137,16 +121,16 @@ export default function ProductosScreen() {
       setProductos((prev) =>
         prev.map((p) =>
           String(p.id) === editandoId
-            ? ({
+            ? {
                 ...p,
                 nombre: nombreLimpio,
                 cantidad: cantidadNum,
                 unidad,
                 fechaCaducidad: aClave(fecha),
                 categoria: categoriaSel ?? p.categoria,
-              })
-            : p
-        )
+              }
+            : p,
+        ),
       );
     } else {
       const nuevoProducto = {
@@ -159,67 +143,77 @@ export default function ProductosScreen() {
       };
       setProductos((prev) => [nuevoProducto, ...prev]);
     }
-    setMensajeGuardado(editandoId ? 'Producto actualizado. Sincronizando tus cambios.' : 'Producto agregado. Sincronizando tus cambios.');
+    setMensajeGuardado(
+      editandoId
+        ? 'Producto actualizado. Sincronizando tus cambios.'
+        : 'Producto agregado. Sincronizando tus cambios.',
+    );
     cerrarModal();
-  }, [cantidad, categoriaSel, editandoId, fecha, nombre, setProductos, unidad]);
+  }, [cantidad, categoriaSel, cerrarModal, editandoId, fecha, nombre, setProductos, unidad]);
 
-  const confirmarEliminar = useCallback((p: Producto) => {
-    const borrar = () => {
-      setProductos((prev) => prev.filter((x) => x.id !== p.id));
-      setMensajeGuardado('Producto eliminado. Sincronizando tus cambios.');
-    };
+  const confirmarEliminar = useCallback(
+    (p: Producto) => {
+      const borrar = () => {
+        setProductos((prev) => prev.filter((x) => x.id !== p.id));
+        setMensajeGuardado('Producto eliminado. Sincronizando tus cambios.');
+      };
 
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(`¿Eliminar "${p.nombre}"?`)) {
-        borrar();
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.confirm(`¿Eliminar "${p.nombre}"?`)) {
+          borrar();
+        }
+        return;
       }
-      return;
-    }
 
-    Alert.alert('Eliminar producto', `¿Seguro que quieres eliminar "${p.nombre}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: borrar },
-    ]);
-  }, [setProductos]);
+      Alert.alert('Eliminar producto', `¿Seguro que quieres eliminar "${p.nombre}"?`, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: borrar },
+      ]);
+    },
+    [setProductos],
+  );
 
-  const seAcabo = useCallback((p: Producto) => {
-    const mover = () => {
-      setListaCompras((prev) => {
-        const yaEsta = prev.some(
-          (i) => !i.comprado && i.nombre.trim().toLowerCase() === p.nombre.trim().toLowerCase()
-        );
-        if (yaEsta) return prev;
-        return [
-          {
-            id: Date.now().toString(),
-            nombre: p.nombre,
-            cantidad: String(p.cantidad),
-            unidad: p.unidad,
-            comprado: false,
-            categoria: p.categoria,
-          },
-          ...prev,
-        ];
-      });
-      setProductos((prev) => prev.filter((x) => x.id !== p.id));
-      setMensajeGuardado('Producto movido a la lista de compras.');
-    };
+  const seAcabo = useCallback(
+    (p: Producto) => {
+      const mover = () => {
+        setListaCompras((prev) => {
+          const yaEsta = prev.some(
+            (i) => !i.comprado && i.nombre.trim().toLowerCase() === p.nombre.trim().toLowerCase(),
+          );
+          if (yaEsta) return prev;
+          return [
+            {
+              id: Date.now().toString(),
+              nombre: p.nombre,
+              cantidad: String(p.cantidad),
+              unidad: p.unidad,
+              comprado: false,
+              categoria: p.categoria,
+            },
+            ...prev,
+          ];
+        });
+        setProductos((prev) => prev.filter((x) => x.id !== p.id));
+        setMensajeGuardado('Producto movido a la lista de compras.');
+      };
 
-    if (Platform.OS === 'web') {
-      if (
-        typeof window !== 'undefined' &&
-        window.confirm(`"${p.nombre}" se acabó. ¿Pasarlo a la lista de compras?`)
-      ) {
-        mover();
+      if (Platform.OS === 'web') {
+        if (
+          typeof window !== 'undefined' &&
+          window.confirm(`"${p.nombre}" se acabó. ¿Pasarlo a la lista de compras?`)
+        ) {
+          mover();
+        }
+        return;
       }
-      return;
-    }
 
-    Alert.alert('Se acabó', `¿Pasar "${p.nombre}" a la lista de compras?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Pasar a compras', onPress: mover },
-    ]);
-  }, [setListaCompras, setProductos]);
+      Alert.alert('Se acabó', `¿Pasar "${p.nombre}" a la lista de compras?`, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Pasar a compras', onPress: mover },
+      ]);
+    },
+    [setListaCompras, setProductos],
+  );
 
   const onCambioFecha = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') setMostrarPicker(false);
@@ -258,32 +252,12 @@ export default function ProductosScreen() {
           />
         </View>
 
-        <FlatList
-          data={productosFiltrados}
-          keyExtractor={keyExtractorProducto}
+        <InventoryProductList
+          productos={productosFiltrados}
+          cargando={cargandoDatos}
+          error={errorDatos}
+          busqueda={busqueda}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              {cargandoDatos ? (
-                <>
-                  <ActivityIndicator color={colors.secondary} accessibilityLabel="Cargando productos" />
-                  <Text style={styles.emptyText}>Cargando productos…</Text>
-                </>
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="basket-off-outline" size={36} color={colors.inkMuted} />
-                  <Text style={styles.emptyText}>
-                    {errorDatos
-                      ? 'No se pudieron cargar los productos.'
-                      : busqueda.trim()
-                        ? 'No encontramos productos con ese nombre'
-                        : 'Aún no hay productos en tu despensa'}
-                  </Text>
-                </>
-              )}
-            </View>
-          }
         />
       </View>
 
@@ -296,322 +270,28 @@ export default function ProductosScreen() {
         <MaterialCommunityIcons name="plus" size={26} color={colors.surface} accessible={false} />
       </Pressable>
 
-      {/* Modal agregar / editar */}
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={cerrarModal}>
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <Pressable style={styles.modalBackdrop} onPress={cerrarModal} accessible={false} />
-          <View style={styles.modalSheet}>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>
-                {editandoId ? 'Editar producto' : 'Nuevo producto'}
-              </Text>
-
-              <Text style={styles.label}>Nombre</Text>
-              <TextInput
-                accessibilityLabel="Nombre del producto"
-                placeholder="Ej. Leche"
-                placeholderTextColor={colors.inkMuted}
-                value={nombre}
-                onChangeText={setNombre}
-                style={styles.input}
-              />
-
-              <Text style={styles.label}>Cantidad</Text>
-              <View style={styles.qtyRow}>
-                <Pressable
-                  style={styles.qtyBtn}
-                  onPress={() => ajustarCantidad(-1)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Disminuir cantidad"
-                >
-                  <MaterialCommunityIcons name="minus" size={22} color={colors.ink} />
-                </Pressable>
-                <TextInput
-                  accessibilityLabel="Cantidad"
-                  value={cantidad}
-                  onChangeText={(t) => setCantidad(t.replace(/[^0-9]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder="1"
-                  placeholderTextColor={colors.inkMuted}
-                  style={[styles.input, styles.qtyInput]}
-                />
-                <Pressable
-                  style={styles.qtyBtn}
-                  onPress={() => ajustarCantidad(1)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Aumentar cantidad"
-                >
-                  <MaterialCommunityIcons name="plus" size={22} color={colors.ink} />
-                </Pressable>
-              </View>
-
-              <Text style={styles.label}>Unidad</Text>
-              <View style={styles.chips}>
-                {UNIDADES.map((u) => {
-                  const activa = unidad === u;
-                  return (
-                    <Pressable
-                      key={u}
-                      style={[styles.chip, activa && styles.chipActive]}
-                      onPress={() => setUnidad(u)}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: activa }}
-                      accessibilityLabel={`Unidad ${u}`}
-                    >
-                      <Text style={[styles.chipText, activa && styles.chipTextActive]}>{u}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.label}>Categoría</Text>
-              <View style={styles.chips}>
-                {categorias.map((c) => {
-                  const id = idCategoria(c);
-                  const activa = categoriaSel === id;
-                  return (
-                    <Pressable
-                      key={id}
-                      style={[styles.chip, activa && styles.chipActive]}
-                      onPress={() => setCategoriaSel(activa ? null : id)}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: activa }}
-                      accessibilityLabel={`Categoría ${c.nombre}`}
-                    >
-                      <Text style={[styles.chipText, activa && styles.chipTextActive]}>
-                        {c.nombre}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.label}>Fecha de caducidad</Text>
-              <Pressable
-                style={[styles.input, styles.dateInput]}
-                onPress={() => setMostrarPicker((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel={`Fecha de caducidad: ${formatearFecha(aClave(fecha))}`}
-              >
-                <MaterialCommunityIcons name="calendar" size={20} color={colors.inkMuted} />
-                <Text style={styles.dateText}>{formatearFecha(aClave(fecha))}</Text>
-              </Pressable>
-
-              {mostrarPicker && (
-                <DateTimePicker
-                  value={fecha}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={onCambioFecha}
-                />
-              )}
-
-              <ErrorMessage mensaje={errorFormulario} />
-              <View style={styles.modalActions}>
-                <Pressable
-                  style={[styles.btn, styles.btnGhost]}
-                  onPress={cerrarModal}
-                  accessibilityRole="button"
-                  accessibilityLabel="Cancelar edición del producto"
-                >
-                  <Text style={[styles.btnText, { color: colors.ink }]}>Cancelar</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.btn, styles.btnPrimary]}
-                  onPress={guardar}
-                  accessibilityRole="button"
-                  accessibilityLabel={editandoId ? 'Guardar producto' : 'Agregar producto'}
-                >
-                  <Text style={[styles.btnText, { color: colors.surface }]}>
-                    {editandoId ? 'Guardar' : 'Agregar'}
-                  </Text>
-                </Pressable>
-              </View>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <ProductoFormModal
+        visible={modalVisible}
+        editando={Boolean(editandoId)}
+        nombre={nombre}
+        cantidad={cantidad}
+        unidad={unidad}
+        fecha={fecha}
+        categoria={categoriaSel}
+        mostrarPicker={mostrarPicker}
+        categorias={categorias}
+        error={errorFormulario}
+        onClose={cerrarModal}
+        onNombreChange={setNombre}
+        onCantidadChange={setCantidad}
+        onUnidadChange={setUnidad}
+        onCategoriaChange={setCategoriaSel}
+        onMostrarPickerChange={setMostrarPicker}
+        onCambioFecha={onCambioFecha}
+        onAjustarCantidad={ajustarCantidad}
+        onGuardar={guardar}
+        formatearFecha={formatearFecha}
+      />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    height: 48,
-    marginBottom: 16,
-  },
-  searchInput: {
-    flex: 1,
-    ...type.body,
-    color: colors.ink,
-  },
-  empty: {
-    alignItems: 'center',
-    marginTop: 60,
-    gap: 8,
-  },
-  emptyText: {
-    ...type.body,
-    color: colors.inkMuted,
-    textAlign: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  modalSheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    paddingBottom: 32,
-    maxHeight: '90%',
-  },
-  modalTitle: {
-    ...type.body,
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.ink,
-    marginBottom: 16,
-  },
-  label: {
-    ...type.body,
-    color: colors.inkMuted,
-    fontSize: 13,
-    marginBottom: 6,
-    marginTop: 8,
-  },
-  input: {
-    ...type.body,
-    color: colors.ink,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    height: 48,
-  },
-  dateInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dateText: {
-    ...type.body,
-    color: colors.ink,
-  },
-  qtyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  qtyInput: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  qtyBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    backgroundColor: colors.secondary,
-    borderColor: colors.secondary,
-  },
-  chipText: {
-    ...type.body,
-    fontSize: 13,
-    color: colors.ink,
-  },
-  chipTextActive: {
-    color: colors.surface,
-    fontWeight: '600',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
-  btn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnGhost: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  btnPrimary: {
-    backgroundColor: colors.secondary,
-  },
-  btnText: {
-    ...type.body,
-    fontWeight: '600',
-  },
-});

@@ -4,14 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 export type CategoryId =
-  | 'lacteos'
-  | 'granos'
-  | 'enlatados'
-  | 'bebidas'
-  | 'limpieza'
-  | 'frutas'
-  | 'verduras'
-  | 'otros';
+  'lacteos' | 'granos' | 'enlatados' | 'bebidas' | 'limpieza' | 'frutas' | 'verduras' | 'otros';
 
 export type Category = {
   id: CategoryId;

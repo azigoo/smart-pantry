@@ -18,7 +18,11 @@ describe('validarNuevoProducto (RF-06 / RU-01: registro de productos)', () => {
   });
 
   it('CP-01.2 - rechaza una cantidad no numérica', () => {
-    const resultado = validarNuevoProducto({ nombre: 'Leche', cantidad: 'abc', fecha: fechaFutura });
+    const resultado = validarNuevoProducto({
+      nombre: 'Leche',
+      cantidad: 'abc',
+      fecha: fechaFutura,
+    });
     expect(resultado.valido).toBe(false);
     expect(resultado.errores).toContain('La cantidad debe ser un número entero entre 1 y 99999.');
   });
@@ -83,9 +87,9 @@ describe('validación de los demás formularios', () => {
     expect(validarCorreo('persona@').valido).toBe(false);
     expect(validarContrasena('12345').valido).toBe(false);
     expect(validarContrasena('123456').valido).toBe(true);
-    expect(validarInicioSesion({ correo: 'persona@ejemplo.com', contrasena: '123456' }).valido).toBe(
-      true,
-    );
+    expect(
+      validarInicioSesion({ correo: 'persona@ejemplo.com', contrasena: '123456' }).valido,
+    ).toBe(true);
     expect(
       validarRegistro({ nombre: 'Ana', correo: 'persona@ejemplo.com', contrasena: '123456' })
         .valido,

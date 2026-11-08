@@ -62,7 +62,10 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <ScreenHeader
             title="Crear cuenta"

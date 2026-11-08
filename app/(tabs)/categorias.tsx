@@ -6,7 +6,7 @@ import { useDespensa } from '@/context/DespensaContext';
 import { colors } from '@/theme/colors';
 import { diasParaCaducar } from '@/theme/dates';
 import { type } from '@/theme/typography';
-import type { CategoryId } from '@/theme/types';
+import type { CategoryId, Producto } from '@/theme/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -19,7 +19,6 @@ import {
   View,
   type ListRenderItemInfo,
 } from 'react-native';
-import type { Producto } from '@/theme/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const keyExtractorProducto = (producto: Producto) => producto.id;
@@ -31,7 +30,7 @@ export default function CategoriasScreen() {
   // Se busca en la lista actual, así el detalle también se mantiene actualizado
   const categoriaSel = useMemo(
     () => categorias.find((categoria) => categoria.id === categoriaId) ?? null,
-    [categorias, categoriaId]
+    [categorias, categoriaId],
   );
 
   const productosDeCategoria = useMemo(() => {
@@ -79,7 +78,10 @@ export default function CategoriasScreen() {
               <View style={styles.empty}>
                 {cargandoDatos ? (
                   <>
-                    <ActivityIndicator color={colors.secondary} accessibilityLabel="Cargando productos" />
+                    <ActivityIndicator
+                      color={colors.secondary}
+                      accessibilityLabel="Cargando productos"
+                    />
                     <Text style={styles.emptyText}>Cargando productos…</Text>
                   </>
                 ) : (
@@ -135,7 +137,7 @@ export default function CategoriasScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-  ); 
+  );
 }
 
 const styles = StyleSheet.create({

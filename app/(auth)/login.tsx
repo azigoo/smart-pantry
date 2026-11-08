@@ -2,11 +2,7 @@ import { AboutModal } from '@/components/AboutModal';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/context/AuthContext';
-import {
-  esErrorAutenticacion,
-  iniciarSesion,
-  recuperarContrasena,
-} from '@/services/authService';
+import { esErrorAutenticacion, iniciarSesion, recuperarContrasena } from '@/services/authService';
 import { firebaseEstaConfigurado } from '@/services/firebase';
 import { colors } from '@/theme/colors';
 import { validarCorreo, validarInicioSesion } from '@/theme/validators';
@@ -108,7 +104,9 @@ export default function LoginScreen() {
     try {
       setCargando(true);
       await recuperarContrasena(email);
-      setInfo('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña. Revisa también la carpeta de spam.');
+      setInfo(
+        'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña. Revisa también la carpeta de spam.',
+      );
     } catch (err) {
       const mensaje = esErrorAutenticacion(err)
         ? err.mensaje

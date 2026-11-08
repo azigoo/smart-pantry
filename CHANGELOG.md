@@ -4,6 +4,13 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y el
 versionado sigue [SemVer 2.0.0](https://semver.org/lang/es/) (ver punto 29 del informe).
 
+## [Unreleased]
+
+### Refactorizado
+- Se dividieron las pantallas extensas de productos, compras y perfil en componentes
+  especializados, y se trasladaron las operaciones Firestore de la despensa a un servicio.
+- Se configuraron ESLint para Expo SDK 57 y Prettier, con scripts `lint` y `format`.
+
 ## [v0.2.0-auth] - 2026-09-29
 
 ### Agregado
