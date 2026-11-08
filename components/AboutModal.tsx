@@ -22,7 +22,13 @@ export function AboutModal({ visible, onClose }: Props) {
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Pressable style={styles.closeButton} onPress={onClose} hitSlop={10}>
+          <Pressable
+            style={styles.closeButton}
+            onPress={onClose}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar acerca de Smart Pantry"
+          >
             <MaterialCommunityIcons name="close" size={22} color={colors.inkMuted} />
           </Pressable>
 
@@ -85,6 +91,10 @@ const styles = StyleSheet.create({
     top: 14,
     right: 14,
     zIndex: 1,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badge: {
     width: 64,

@@ -45,6 +45,7 @@ type DespensaContextValue = {
   diasAviso: DiasAviso;
   setDiasAviso: (dias: DiasAviso) => void;
   errorDatos: string | null;
+  cargandoDatos: boolean;
 };
 
 const DespensaContext = createContext<DespensaContextValue | null>(null);
@@ -124,6 +125,11 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
   const [nombreUsuario, setNombreUsuario] = useState<string | null>(null);
   const [diasAviso, setDiasAvisoState] = useState<DiasAviso>(3);
   const [errorDatos, setErrorDatos] = useState<string | null>(null);
+  const [cargandoDatos, setCargandoDatos] = useState(usaFirestore);
+  const [coleccionesCargadas, setColeccionesCargadas] = useState({
+    productos: !usaFirestore,
+    listaCompras: !usaFirestore,
+  });
 
   const productosRef = useRef(productos);
   const listaRef = useRef(listaCompras);
@@ -160,8 +166,20 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       setProductosState([]);
       setListaComprasState([]);
       setErrorDatos(null);
+      setCargandoDatos(false);
+      setColeccionesCargadas({ productos: true, listaCompras: true });
       return;
     }
+
+    setCargandoDatos(true);
+    setColeccionesCargadas({ productos: false, listaCompras: false });
+    const marcarColeccionCargada = (coleccion: 'productos' | 'listaCompras') => {
+      setColeccionesCargadas((cargadas) => {
+        const actualizadas = { ...cargadas, [coleccion]: true };
+        if (actualizadas.productos && actualizadas.listaCompras) setCargandoDatos(false);
+        return actualizadas;
+      });
+    };
 
     let cancelarProductos: (() => void) | undefined;
     let cancelarLista: (() => void) | undefined;
@@ -181,10 +199,12 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
           const ordenados = masNuevoPrimero(datos);
           productosRef.current = ordenados;
           setProductosState(ordenados);
+          marcarColeccionCargada('productos');
         },
         (error: Error) => {
           logger.error('Lectura de productos', error);
           setErrorDatos('No se pudieron cargar tus productos. Revisa tu conexión y las reglas de Firestore.');
+          marcarColeccionCargada('productos');
         },
       );
 
@@ -201,10 +221,12 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
           const ordenados = masNuevoPrimero(datos);
           listaRef.current = ordenados;
           setListaComprasState(ordenados);
+          marcarColeccionCargada('listaCompras');
         },
         (error: Error) => {
           logger.error('Lectura de compras', error);
           setErrorDatos('No se pudo cargar tu lista de compras. Revisa tu conexión y las reglas de Firestore.');
+          marcarColeccionCargada('listaCompras');
         },
       );
 
@@ -217,6 +239,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       cancelarLista?.();
       logger.error('Conexión con Firestore', error);
       setErrorDatos('No se pudieron abrir tus datos. Revisa la configuración y las reglas de Firestore.');
+      setCargandoDatos(false);
     }
   }, [uid, usaFirestore]);
 
@@ -325,6 +348,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       diasAviso,
       setDiasAviso,
       errorDatos,
+      cargandoDatos,
     }),
     [
       productos,
@@ -336,6 +360,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
       diasAviso,
       setDiasAviso,
       errorDatos,
+      cargandoDatos,
     ]
   );
 

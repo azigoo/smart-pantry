@@ -204,3 +204,37 @@ de la segunda. No se midieron renders reales, latencia, consumo de dispositivo n
 lecturas facturables: para ello se requiere ejecutar la app y observar un emulador o
 proyecto Firebase configurado, y las pruebas locales de esta fase no realizan esas
 conexiones.
+
+### 6.12 Revisión de accesibilidad y experiencia de uso (Fase 3)
+
+Se añadieron nombres accesibles y roles a los controles interactivos y campos de las
+pantallas de acceso, inicio, productos, compras, categorías y perfil, además de los
+componentes reutilizables. Los mensajes de error se exponen como alertas accesibles y
+los controles de selección comunican su estado. Las pantallas principales muestran
+indicadores durante la carga, mensajes cuando no hay elementos y errores de carga
+cuando corresponde. Los cambios conservan el huevo de Pascua del logo de inicio y su
+`AboutModal`.
+
+Los controles principales modificados usan dimensiones mínimas de 44 puntos o más.
+Las eliminaciones siguen pidiendo confirmación en web y móvil; guardar y otras
+mutaciones muestran mensajes de retroalimentación mientras se sincronizan los cambios.
+
+Se calcularon ratios WCAG con la fórmula de luminancia relativa sRGB, usando los
+valores de `theme/colors.ts`. Los colores principales de texto, acciones y estados
+alcanzan al menos 4.94:1 sobre el fondo de la app y 5.45:1 sobre blanco. Los colores
+de texto de las cuatro tarjetas, medidos sobre su tarjeta correspondiente, alcanzan
+entre 4.92:1 y 5.97:1. El texto de la etiqueta de caducidad medida alcanza 5.85:1.
+Estos resultados estáticos exceden 4.5:1 para texto normal en las combinaciones
+indicadas; no certifican cada combinación de color posible ni el contraste en un
+dispositivo físico.
+
+Evidencia: estilos y controles en `components/PrimaryButton.tsx`,
+`components/TextField.tsx`, `components/InventoryProductRow.tsx`,
+`components/ShoppingListRow.tsx`, `app/(auth)/login.tsx`,
+`app/(auth)/register.tsx` y las pantallas de `app/(tabs)/`. Los ratios se calcularon
+con Node.js sobre los colores declarados en `theme/colors.ts`; no se midieron con
+capturas de pantalla. No se hicieron pruebas con lector de pantalla, teclado físico,
+usuarios reales ni dispositivos físicos.
+
+Verificación de cierre de fase: `npx tsc --noEmit` terminó sin errores y `npm test`
+aprobó 3 suites con 17 pruebas.

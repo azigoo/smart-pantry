@@ -10,6 +10,7 @@ import type { CategoryId } from '@/theme/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -24,7 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const keyExtractorProducto = (producto: Producto) => producto.id;
 
 export default function CategoriasScreen() {
-  const { productos, categorias, errorDatos } = useDespensa();
+  const { productos, categorias, errorDatos, cargandoDatos } = useDespensa();
   const [categoriaId, setCategoriaId] = useState<CategoryId | null>(null);
 
   // Se busca en la lista actual, así el detalle también se mantiene actualizado
@@ -53,7 +54,13 @@ export default function CategoriasScreen() {
       <SafeAreaView style={styles.screen} edges={['top']}>
         <View style={styles.detail}>
           <ErrorMessage mensaje={errorDatos} />
-          <Pressable style={styles.backBtn} onPress={() => setCategoriaId(null)} hitSlop={8}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => setCategoriaId(null)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Volver a categorías"
+          >
             <MaterialCommunityIcons name="arrow-left" size={22} color={colors.secondary} />
             <Text style={styles.backText}>Categorías</Text>
           </Pressable>
@@ -70,12 +77,25 @@ export default function CategoriasScreen() {
             contentContainerStyle={{ paddingBottom: 40 }}
             ListEmptyComponent={
               <View style={styles.empty}>
-                <MaterialCommunityIcons
-                  name="basket-off-outline"
-                  size={36}
-                  color={colors.inkMuted}
-                />
-                <Text style={styles.emptyText}>No hay productos en esta categoría</Text>
+                {cargandoDatos ? (
+                  <>
+                    <ActivityIndicator color={colors.secondary} accessibilityLabel="Cargando productos" />
+                    <Text style={styles.emptyText}>Cargando productos…</Text>
+                  </>
+                ) : (
+                  <>
+                    <MaterialCommunityIcons
+                      name="basket-off-outline"
+                      size={36}
+                      color={colors.inkMuted}
+                    />
+                    <Text style={styles.emptyText}>
+                      {errorDatos
+                        ? 'No se pudieron cargar los productos.'
+                        : 'No hay productos en esta categoría'}
+                    </Text>
+                  </>
+                )}
               </View>
             }
           />
@@ -91,12 +111,21 @@ export default function CategoriasScreen() {
         <ScreenHeader title="Categorías" subtitle="Organiza tu despensa por tipo de producto" />
         <ErrorMessage mensaje={errorDatos} />
 
+        {cargandoDatos && (
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.secondary} accessibilityLabel="Cargando categorías" />
+            <Text style={styles.emptyText}>Cargando tus categorías…</Text>
+          </View>
+        )}
+
         <View style={styles.grid}>
           {categorias.map((categoria) => (
             <Pressable
               key={categoria.id}
               style={styles.tileWrapper}
               onPress={() => setCategoriaId(categoria.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`${categoria.nombre}, ${categoria.cantidad} productos`}
             >
               <View style={{ pointerEvents: 'none' }}>
                 <CategoryTile categoria={categoria} count={categoria.cantidad} />
@@ -135,6 +164,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     alignSelf: 'flex-start',
+    minHeight: 44,
+    paddingHorizontal: 4,
     marginBottom: 12,
   },
   backText: {
@@ -145,6 +176,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 60,
     gap: 8,
+  },
+  loading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
   },
   emptyText: {
     ...type.body,

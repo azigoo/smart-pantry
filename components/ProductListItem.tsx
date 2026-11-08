@@ -25,7 +25,15 @@ export const ProductListItem = memo(function ProductListItem({ producto, onPress
   const porVencer = dias <= 5;
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
+    <Pressable
+      onPress={onPress}
+      accessible={!!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress
+        ? `${producto.nombre}, ${producto.cantidad} ${producto.unidad}, caduca ${formatearFecha(producto.fechaCaducidad)}`
+        : undefined}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+    >
       <View style={[styles.icon, { backgroundColor: tonePalette[categoria.color] }]}>
         <MaterialCommunityIcons name={categoria.icono} size={22} color={colors.ink} />
       </View>

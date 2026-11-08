@@ -2,16 +2,16 @@ export const colors = {
   background: '#FBF3E4',
   surface: '#FFFFFF',
   ink: '#2E2A24',
-  inkMuted: '#8A7F6E',
+  inkMuted: '#6F665A',
   border: '#EADFC8',
 
-  primary: '#E8672E', // naranja Smart Pantry (logo, CTAs principales)
-  primaryDark: '#C9531F',
-  secondary: '#3F8F6F', // verde (headers, éxito, check)
-  secondaryDark: '#2E6E54',
+  primary: '#B74417', // naranja Smart Pantry (logo, CTAs principales)
+  primaryDark: '#983912',
+  secondary: '#2E6E54', // verde (headers, éxito, check)
+  secondaryDark: '#23543F',
 
-  danger: '#D64545',
-  warning: '#D69A2D',
+  danger: '#B4232D',
+  warning: '#8A5A00',
 
   cardYellow: '#FCE6A2',
   cardYellowText: '#7A5B12',

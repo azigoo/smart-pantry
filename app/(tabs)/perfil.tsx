@@ -14,6 +14,7 @@ import { updateProfile } from 'firebase/auth';
 import { useMemo, useState } from 'react';
 import { enviarAvisoDePrueba } from '@/services/notificaciones';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -26,8 +27,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const DANGER = '#C0392B';
 
 function aviso(titulo: string, mensaje: string) {
   if (Platform.OS === 'web') {
@@ -48,12 +47,14 @@ export default function PerfilScreen() {
     diasAviso,
     setDiasAviso,
     errorDatos,
+    cargandoDatos,
   } = useDespensa();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [nombreEdit, setNombreEdit] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [errorPerfil, setErrorPerfil] = useState<string | null>(null);
+  const [mensajeGuardado, setMensajeGuardado] = useState<string | null>(null);
 
   const nombre = nombreUsuario ?? usuario?.displayName ?? 'Sin nombre';
   const correo = usuario?.email ?? 'Sin sesión iniciada';
@@ -72,6 +73,7 @@ export default function PerfilScreen() {
   function abrirEditar() {
     setNombreEdit(nombreUsuario ?? usuario?.displayName ?? '');
     setErrorPerfil(null);
+    setMensajeGuardado(null);
     setModalVisible(true);
   }
 
@@ -92,6 +94,7 @@ export default function PerfilScreen() {
       await updateProfile(usuario, { displayName: limpio });
       setNombreUsuario(limpio);
       setModalVisible(false);
+      setMensajeGuardado('Tu nombre se guardó correctamente.');
     } catch (error) {
       logger.error('Actualización de perfil', error);
       setErrorPerfil('No se pudo guardar tu nombre. Revisa tu conexión e intenta de nuevo.');
@@ -142,6 +145,15 @@ export default function PerfilScreen() {
         <ErrorMessage mensaje={errorDatos} />
         <ErrorMessage mensaje={errorAutenticacion} />
         <ErrorMessage mensaje={errorPerfil} />
+        <ErrorMessage mensaje={mensajeGuardado} tipo="exito" />
+
+        {cargandoDatos && (
+          <ActivityIndicator
+            style={styles.loading}
+            color={colors.secondary}
+            accessibilityLabel="Cargando datos de tu despensa"
+          />
+        )}
 
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
@@ -151,7 +163,12 @@ export default function PerfilScreen() {
           <Text style={styles.email}>{correo}</Text>
 
           {usuario && firebaseListo && (
-            <Pressable style={styles.editBtn} onPress={abrirEditar}>
+            <Pressable
+              style={styles.editBtn}
+              onPress={abrirEditar}
+              accessibilityRole="button"
+              accessibilityLabel="Editar nombre del perfil"
+            >
               <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.secondary} />
               <Text style={styles.editText}>Editar nombre</Text>
             </Pressable>
@@ -165,7 +182,7 @@ export default function PerfilScreen() {
             <Text style={styles.statLabel}>Productos</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={[styles.statValue, porVencer > 0 && { color: DANGER }]}>{porVencer}</Text>
+            <Text style={[styles.statValue, porVencer > 0 && { color: colors.danger }]}>{porVencer}</Text>
             <Text style={styles.statLabel}>Por vencer</Text>
           </View>
         </View>
@@ -190,6 +207,9 @@ export default function PerfilScreen() {
                 key={d}
                 style={[styles.chip, activo && styles.chipActive]}
                 onPress={() => setDiasAviso(d)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: activo }}
+                accessibilityLabel={`Avisarme ${d === 1 ? 'un día' : `${d} días`} antes`}
               >
                 <Text style={[styles.chipText, activo && styles.chipTextActive]}>
                   {d === 1 ? '1 día' : `${d} días`}
@@ -198,18 +218,33 @@ export default function PerfilScreen() {
             );
           })}
         </View>
-        <Pressable style={styles.testBtn} onPress={probarAviso}>
+        <Pressable
+          style={styles.testBtn}
+          onPress={probarAviso}
+          accessibilityRole="button"
+          accessibilityLabel="Probar aviso de caducidad"
+        >
           <MaterialCommunityIcons name="bell-ring-outline" size={18} color={colors.secondary} />
           <Text style={styles.editText}>Probar aviso</Text>
         </Pressable>
 
         {usuario && firebaseListo ? (
-          <Pressable style={styles.logoutBtn} onPress={confirmarCierre}>
-            <MaterialCommunityIcons name="logout" size={20} color={DANGER} />
+          <Pressable
+            style={styles.logoutBtn}
+            onPress={confirmarCierre}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar sesión"
+          >
+            <MaterialCommunityIcons name="logout" size={20} color={colors.danger} />
             <Text style={styles.logoutText}>Cerrar sesión</Text>
           </Pressable>
         ) : (
-          <Pressable style={styles.loginBtn} onPress={() => router.replace('/(auth)/login')}>
+          <Pressable
+            style={styles.loginBtn}
+            onPress={() => router.replace('/(auth)/login')}
+            accessibilityRole="button"
+            accessibilityLabel="Iniciar sesión"
+          >
             <MaterialCommunityIcons name="login" size={20} color={colors.surface} />
             <Text style={styles.loginText}>Iniciar sesión</Text>
           </Pressable>
@@ -226,11 +261,16 @@ export default function PerfilScreen() {
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <Pressable style={styles.modalBackdrop} onPress={() => setModalVisible(false)} />
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setModalVisible(false)}
+            accessible={false}
+          />
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Editar nombre</Text>
             <ErrorMessage mensaje={errorPerfil} />
             <TextInput
+              accessibilityLabel="Nombre del perfil"
               value={nombreEdit}
               onChangeText={setNombreEdit}
               placeholder="Tu nombre"
@@ -242,6 +282,8 @@ export default function PerfilScreen() {
               <Pressable
                 style={[styles.btn, styles.btnGhost]}
                 onPress={() => setModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancelar edición del nombre"
               >
                 <Text style={[styles.btnText, { color: colors.ink }]}>Cancelar</Text>
               </Pressable>
@@ -249,6 +291,8 @@ export default function PerfilScreen() {
                 style={[styles.btn, styles.btnPrimary, guardando && { opacity: 0.6 }]}
                 onPress={guardarNombre}
                 disabled={guardando}
+                accessibilityRole="button"
+                accessibilityLabel="Guardar nombre del perfil"
               >
                 <Text style={[styles.btnText, { color: colors.surface }]}>
                   {guardando ? 'Guardando...' : 'Guardar'}
@@ -291,7 +335,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginTop: 14,
-    paddingVertical: 6,
+    minHeight: 44,
+    paddingVertical: 8,
     paddingHorizontal: 12,
   },
   editText: { ...type.bodyMedium, color: colors.secondary },
@@ -312,7 +357,7 @@ const styles = StyleSheet.create({
   chipsRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
   chip: {
     flex: 1,
-    height: 44,
+    minHeight: 44,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -328,7 +373,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
+    minHeight: 44,
     paddingVertical: 8,
+    paddingHorizontal: 8,
   },
   logoutBtn: {
     flexDirection: 'row',
@@ -338,10 +385,10 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: DANGER,
+    borderColor: colors.danger,
     marginTop: 16,
   },
-  logoutText: { ...type.body, color: DANGER, fontWeight: '600' },
+  logoutText: { ...type.body, color: colors.danger, fontWeight: '600' },
   loginBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -402,4 +449,7 @@ const styles = StyleSheet.create({
   },
   btnPrimary: { backgroundColor: colors.secondary },
   btnText: { ...type.body, fontWeight: '600' },
+  loading: {
+    marginBottom: 12,
+  },
 });

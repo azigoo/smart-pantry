@@ -9,12 +9,13 @@ import { type } from '@/theme/typography';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function InicioScreen() {
   const { usuario } = useAuth();
-  const { productos, listaCompras, categorias, nombreUsuario, errorDatos } = useDespensa();
+  const { productos, listaCompras, categorias, nombreUsuario, errorDatos, cargandoDatos } =
+    useDespensa();
 
   const porVencer = useMemo(
     () => productos.filter((p) => diasParaCaducar(p.fechaCaducidad) <= 5).length,
@@ -51,6 +52,8 @@ export default function InicioScreen() {
             style={styles.avatar}
             onPress={() => router.push('/(tabs)/perfil')}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir perfil"
           >
             <MaterialCommunityIcons name="account" size={22} color={colors.secondary} />
           </Pressable>
@@ -69,15 +72,29 @@ export default function InicioScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={type.h2}>Por vencer pronto</Text>
-          <Pressable onPress={() => router.push('/(tabs)/productos')}>
+          <Pressable
+            onPress={() => router.push('/(tabs)/productos')}
+            accessibilityRole="button"
+            accessibilityLabel="Ver todos los productos"
+            style={styles.linkButton}
+          >
             <Text style={styles.link}>Ver todo</Text>
           </Pressable>
         </View>
 
-        {proximosAVencer.length === 0 ? (
+        {cargandoDatos ? (
+          <View style={styles.empty}>
+            <ActivityIndicator color={colors.secondary} accessibilityLabel="Cargando productos" />
+            <Text style={styles.emptyText}>Cargando tu despensa…</Text>
+          </View>
+        ) : proximosAVencer.length === 0 ? (
           <View style={styles.empty}>
             <MaterialCommunityIcons name="basket-off-outline" size={36} color={colors.inkMuted} />
-            <Text style={styles.emptyText}>Aún no hay productos en tu despensa</Text>
+            <Text style={styles.emptyText}>
+              {errorDatos
+                ? 'No se pudieron cargar tus productos.'
+                : 'Aún no hay productos en tu despensa'}
+            </Text>
           </View>
         ) : (
           proximosAVencer.map((producto) => (
@@ -89,6 +106,8 @@ export default function InicioScreen() {
       <Pressable
         style={styles.fab}
         onPress={() => router.push({ pathname: '/(tabs)/productos', params: { nuevo: '1' } })}
+        accessibilityRole="button"
+        accessibilityLabel="Agregar producto"
       >
         <MaterialCommunityIcons name="plus" size={26} color={colors.surface} />
       </Pressable>
@@ -144,6 +163,11 @@ const styles = StyleSheet.create({
   link: {
     ...type.bodyMedium,
     color: colors.secondary,
+  },
+  linkButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
   },
   empty: {
     alignItems: 'center',

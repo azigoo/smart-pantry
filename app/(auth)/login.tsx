@@ -129,6 +129,8 @@ export default function LoginScreen() {
           <Pressable
             onPress={handleLogoPress}
             hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Smart Pantry. Toca tres veces para ver información acerca de la app."
             style={({ pressed }) => [styles.logoBadge, pressed && { opacity: 0.85 }]}
           >
             <MaterialCommunityIcons name="fridge-outline" size={40} color={colors.secondary} />
@@ -159,13 +161,17 @@ export default function LoginScreen() {
               onPress={handleRecuperar}
               disabled={cargando}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Recuperar contraseña"
               style={styles.forgotBtn}
             >
               <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
             </Pressable>
 
             {error || errorAutenticacion ? (
-              <Text style={styles.errorText}>{error ?? errorAutenticacion}</Text>
+              <Text style={styles.errorText} accessibilityRole="alert">
+                {error ?? errorAutenticacion}
+              </Text>
             ) : null}
             {info ? <Text style={styles.infoText}>{info}</Text> : null}
 
@@ -175,7 +181,13 @@ export default function LoginScreen() {
               style={{ marginTop: 8 }}
               onPress={handleLogin}
             />
-            {cargando && <ActivityIndicator style={{ marginTop: 12 }} color={colors.secondary} />}
+            {cargando && (
+              <ActivityIndicator
+                style={{ marginTop: 12 }}
+                color={colors.secondary}
+                accessibilityLabel="Iniciando sesión"
+              />
+            )}
 
             <View style={styles.footerRow}>
               <Text style={styles.footerText}>¿No tienes cuenta? </Text>
@@ -230,6 +242,9 @@ const styles = StyleSheet.create({
   forgotBtn: {
     alignSelf: 'flex-end',
     marginBottom: 12,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
   },
   errorText: {
     ...type.caption,
@@ -253,5 +268,6 @@ const styles = StyleSheet.create({
   link: {
     ...type.bodyMedium,
     color: colors.secondary,
+    minHeight: 44,
   },
 });

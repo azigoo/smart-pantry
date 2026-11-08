@@ -22,6 +22,11 @@ export function CategoryTile({ categoria, count, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
+      accessible={!!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress
+        ? `${categoria.nombre}${typeof count === 'number' ? `, ${count} productos` : ''}`
+        : undefined}
       style={({ pressed }) => [styles.tile, { backgroundColor: palette.bg }, pressed && { opacity: 0.8 }]}
     >
       <MaterialCommunityIcons name={categoria.icono} size={26} color={palette.text} />
@@ -36,6 +41,7 @@ export function CategoryTile({ categoria, count, onPress }: Props) {
 const styles = StyleSheet.create({
   tile: {
     flexBasis: '47%',
+    minHeight: 44,
     borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 14,

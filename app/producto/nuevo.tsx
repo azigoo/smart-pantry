@@ -27,7 +27,13 @@ export default function NuevoProductoScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar formulario de producto"
+          style={styles.closeButton}
+        >
           <MaterialCommunityIcons name="close" size={24} color={colors.inkMuted} />
         </Pressable>
         <Text style={type.h2}>Agregar producto</Text>
@@ -45,7 +51,13 @@ export default function NuevoProductoScreen() {
         <Text style={styles.label}>Categoría</Text>
         <View style={styles.grid}>
           {categorias.map((categoria) => (
-            <Pressable key={categoria.id} onPress={() => setCategoriaSeleccionada(categoria.id)}>
+            <Pressable
+              key={categoria.id}
+              onPress={() => setCategoriaSeleccionada(categoria.id)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: categoriaSeleccionada === categoria.id }}
+              accessibilityLabel={`Categoría ${categoria.nombre}`}
+            >
               <CategoryTile
                 categoria={categoria}
               />
@@ -104,6 +116,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  closeButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     padding: 20,

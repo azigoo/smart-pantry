@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -41,7 +42,14 @@ const formatearFecha = (clave?: string) => {
 };
 
 export default function ProductosScreen() {
-  const { productos, setProductos, categorias, setListaCompras, errorDatos } = useDespensa();
+  const {
+    productos,
+    setProductos,
+    categorias,
+    setListaCompras,
+    errorDatos,
+    cargandoDatos,
+  } = useDespensa();
   const { nuevo } = useLocalSearchParams<{ nuevo?: string }>();
   const [busqueda, setBusqueda] = useState('');
 
@@ -55,6 +63,7 @@ export default function ProductosScreen() {
   const [categoriaSel, setCategoriaSel] = useState<CategoryId | null>(null);
   const [mostrarPicker, setMostrarPicker] = useState(false);
   const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
+  const [mensajeGuardado, setMensajeGuardado] = useState<string | null>(null);
 
   const productosFiltrados = useMemo(() => {
     if (!busqueda.trim()) return productos;
@@ -77,6 +86,7 @@ export default function ProductosScreen() {
     setCategoriaSel(null);
     setMostrarPicker(false);
     setErrorFormulario(null);
+    setMensajeGuardado(null);
     setModalVisible(true);
   }, []);
 
@@ -96,6 +106,7 @@ export default function ProductosScreen() {
     setCategoriaSel(p.categoria ?? null);
     setMostrarPicker(false);
     setErrorFormulario(null);
+    setMensajeGuardado(null);
     setModalVisible(true);
   }, []);
 
@@ -148,11 +159,15 @@ export default function ProductosScreen() {
       };
       setProductos((prev) => [nuevoProducto, ...prev]);
     }
+    setMensajeGuardado(editandoId ? 'Producto actualizado. Sincronizando tus cambios.' : 'Producto agregado. Sincronizando tus cambios.');
     cerrarModal();
   }, [cantidad, categoriaSel, editandoId, fecha, nombre, setProductos, unidad]);
 
   const confirmarEliminar = useCallback((p: Producto) => {
-    const borrar = () => setProductos((prev) => prev.filter((x) => x.id !== p.id));
+    const borrar = () => {
+      setProductos((prev) => prev.filter((x) => x.id !== p.id));
+      setMensajeGuardado('Producto eliminado. Sincronizando tus cambios.');
+    };
 
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.confirm(`¿Eliminar "${p.nombre}"?`)) {
@@ -187,6 +202,7 @@ export default function ProductosScreen() {
         ];
       });
       setProductos((prev) => prev.filter((x) => x.id !== p.id));
+      setMensajeGuardado('Producto movido a la lista de compras.');
     };
 
     if (Platform.OS === 'web') {
@@ -228,6 +244,7 @@ export default function ProductosScreen() {
       <View style={styles.content}>
         <ScreenHeader title="Productos" subtitle={`${productos.length} en tu despensa`} />
         <ErrorMessage mensaje={errorDatos} />
+        <ErrorMessage mensaje={mensajeGuardado} tipo="exito" />
 
         <View style={styles.searchBar}>
           <MaterialCommunityIcons name="magnify" size={20} color={colors.inkMuted} />
@@ -236,6 +253,7 @@ export default function ProductosScreen() {
             placeholderTextColor={colors.inkMuted}
             value={busqueda}
             onChangeText={setBusqueda}
+            accessibilityLabel="Buscar producto"
             style={styles.searchInput}
           />
         </View>
@@ -247,19 +265,35 @@ export default function ProductosScreen() {
           contentContainerStyle={{ paddingBottom: 100 }}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <MaterialCommunityIcons name="basket-off-outline" size={36} color={colors.inkMuted} />
-              <Text style={styles.emptyText}>
-                {busqueda.trim()
-                  ? 'No encontramos productos con ese nombre'
-                  : 'Aún no hay productos en tu despensa'}
-              </Text>
+              {cargandoDatos ? (
+                <>
+                  <ActivityIndicator color={colors.secondary} accessibilityLabel="Cargando productos" />
+                  <Text style={styles.emptyText}>Cargando productos…</Text>
+                </>
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="basket-off-outline" size={36} color={colors.inkMuted} />
+                  <Text style={styles.emptyText}>
+                    {errorDatos
+                      ? 'No se pudieron cargar los productos.'
+                      : busqueda.trim()
+                        ? 'No encontramos productos con ese nombre'
+                        : 'Aún no hay productos en tu despensa'}
+                  </Text>
+                </>
+              )}
             </View>
           }
         />
       </View>
 
-      <Pressable style={styles.fab} onPress={abrirNuevo}>
-        <MaterialCommunityIcons name="plus" size={26} color={colors.surface} />
+      <Pressable
+        style={styles.fab}
+        onPress={abrirNuevo}
+        accessibilityRole="button"
+        accessibilityLabel="Agregar producto"
+      >
+        <MaterialCommunityIcons name="plus" size={26} color={colors.surface} accessible={false} />
       </Pressable>
 
       {/* Modal agregar / editar */}
@@ -268,7 +302,7 @@ export default function ProductosScreen() {
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <Pressable style={styles.modalBackdrop} onPress={cerrarModal} />
+          <Pressable style={styles.modalBackdrop} onPress={cerrarModal} accessible={false} />
           <View style={styles.modalSheet}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>
@@ -277,6 +311,7 @@ export default function ProductosScreen() {
 
               <Text style={styles.label}>Nombre</Text>
               <TextInput
+                accessibilityLabel="Nombre del producto"
                 placeholder="Ej. Leche"
                 placeholderTextColor={colors.inkMuted}
                 value={nombre}
@@ -286,10 +321,16 @@ export default function ProductosScreen() {
 
               <Text style={styles.label}>Cantidad</Text>
               <View style={styles.qtyRow}>
-                <Pressable style={styles.qtyBtn} onPress={() => ajustarCantidad(-1)}>
+                <Pressable
+                  style={styles.qtyBtn}
+                  onPress={() => ajustarCantidad(-1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Disminuir cantidad"
+                >
                   <MaterialCommunityIcons name="minus" size={22} color={colors.ink} />
                 </Pressable>
                 <TextInput
+                  accessibilityLabel="Cantidad"
                   value={cantidad}
                   onChangeText={(t) => setCantidad(t.replace(/[^0-9]/g, ''))}
                   keyboardType="numeric"
@@ -297,7 +338,12 @@ export default function ProductosScreen() {
                   placeholderTextColor={colors.inkMuted}
                   style={[styles.input, styles.qtyInput]}
                 />
-                <Pressable style={styles.qtyBtn} onPress={() => ajustarCantidad(1)}>
+                <Pressable
+                  style={styles.qtyBtn}
+                  onPress={() => ajustarCantidad(1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Aumentar cantidad"
+                >
                   <MaterialCommunityIcons name="plus" size={22} color={colors.ink} />
                 </Pressable>
               </View>
@@ -311,6 +357,9 @@ export default function ProductosScreen() {
                       key={u}
                       style={[styles.chip, activa && styles.chipActive]}
                       onPress={() => setUnidad(u)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: activa }}
+                      accessibilityLabel={`Unidad ${u}`}
                     >
                       <Text style={[styles.chipText, activa && styles.chipTextActive]}>{u}</Text>
                     </Pressable>
@@ -328,6 +377,9 @@ export default function ProductosScreen() {
                       key={id}
                       style={[styles.chip, activa && styles.chipActive]}
                       onPress={() => setCategoriaSel(activa ? null : id)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: activa }}
+                      accessibilityLabel={`Categoría ${c.nombre}`}
                     >
                       <Text style={[styles.chipText, activa && styles.chipTextActive]}>
                         {c.nombre}
@@ -341,6 +393,8 @@ export default function ProductosScreen() {
               <Pressable
                 style={[styles.input, styles.dateInput]}
                 onPress={() => setMostrarPicker((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={`Fecha de caducidad: ${formatearFecha(aClave(fecha))}`}
               >
                 <MaterialCommunityIcons name="calendar" size={20} color={colors.inkMuted} />
                 <Text style={styles.dateText}>{formatearFecha(aClave(fecha))}</Text>
@@ -357,10 +411,20 @@ export default function ProductosScreen() {
 
               <ErrorMessage mensaje={errorFormulario} />
               <View style={styles.modalActions}>
-                <Pressable style={[styles.btn, styles.btnGhost]} onPress={cerrarModal}>
+                <Pressable
+                  style={[styles.btn, styles.btnGhost]}
+                  onPress={cerrarModal}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar edición del producto"
+                >
                   <Text style={[styles.btnText, { color: colors.ink }]}>Cancelar</Text>
                 </Pressable>
-                <Pressable style={[styles.btn, styles.btnPrimary]} onPress={guardar}>
+                <Pressable
+                  style={[styles.btn, styles.btnPrimary]}
+                  onPress={guardar}
+                  accessibilityRole="button"
+                  accessibilityLabel={editandoId ? 'Guardar producto' : 'Agregar producto'}
+                >
                   <Text style={[styles.btnText, { color: colors.surface }]}>
                     {editandoId ? 'Guardar' : 'Agregar'}
                   </Text>
@@ -505,6 +569,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
+    minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,

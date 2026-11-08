@@ -20,25 +20,49 @@ export const ShoppingListRow = memo(function ShoppingListRow({
 }: Props) {
   return (
     <View style={[styles.row, item.comprado && styles.rowDone]}>
-      <Pressable onPress={() => onToggle(item)} hitSlop={8}>
+      <Pressable
+        onPress={() => onToggle(item)}
+        hitSlop={8}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: item.comprado }}
+        accessibilityLabel={`${item.nombre}, ${item.comprado ? 'comprado' : 'pendiente'}`}
+        style={styles.checkbox}
+      >
         <MaterialCommunityIcons
           name={item.comprado ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
           size={26}
           color={item.comprado ? colors.secondary : colors.inkMuted}
         />
       </Pressable>
-      <Pressable style={styles.rowInfo} onPress={() => onEdit(item)}>
+      <Pressable
+        style={styles.rowInfo}
+        onPress={() => onEdit(item)}
+        accessibilityRole="button"
+        accessibilityLabel={`Editar ${item.nombre}`}
+      >
         <Text style={[styles.rowTitle, item.comprado && styles.rowTitleDone]}>{item.nombre}</Text>
         <Text style={styles.rowQty}>
           Cantidad: {item.cantidad}
           {item.unidad ? ` ${item.unidad}` : ''}
         </Text>
       </Pressable>
-      <Pressable style={styles.iconBtn} onPress={() => onEdit(item)} hitSlop={8}>
+      <Pressable
+        style={styles.iconBtn}
+        onPress={() => onEdit(item)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Editar ${item.nombre}`}
+      >
         <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.inkMuted} />
       </Pressable>
-      <Pressable style={styles.iconBtn} onPress={() => onDelete(item)} hitSlop={8}>
-        <MaterialCommunityIcons name="trash-can-outline" size={22} color="#C0392B" />
+      <Pressable
+        style={styles.iconBtn}
+        onPress={() => onDelete(item)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Eliminar ${item.nombre}`}
+      >
+        <MaterialCommunityIcons name="trash-can-outline" size={22} color={colors.danger} />
       </Pressable>
     </View>
   );
@@ -61,7 +85,15 @@ const styles = StyleSheet.create({
   },
   rowInfo: {
     flex: 1,
+    minHeight: 44,
     gap: 2,
+    justifyContent: 'center',
+  },
+  checkbox: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowTitle: {
     ...type.body,
@@ -78,6 +110,9 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
   },
   iconBtn: {
-    padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

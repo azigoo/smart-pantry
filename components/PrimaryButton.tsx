@@ -15,6 +15,8 @@ export function PrimaryButton({ label, onPress, variant = 'primary', style, disa
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({ pressed }) => [
         styles.base,
         variant === 'primary' && styles.primary,

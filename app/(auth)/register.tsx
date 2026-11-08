@@ -68,7 +68,13 @@ export default function RegisterScreen() {
             title="Crear cuenta"
             subtitle="Regístrate para administrar tu despensa"
             right={
-              <Pressable onPress={() => router.back()} hitSlop={10}>
+              <Pressable
+                onPress={() => router.back()}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Volver"
+                style={styles.closeButton}
+              >
                 <MaterialCommunityIcons name="close" size={24} color={colors.inkMuted} />
               </Pressable>
             }
@@ -100,7 +106,9 @@ export default function RegisterScreen() {
           />
 
           {error || errorAutenticacion ? (
-            <Text style={styles.errorText}>{error ?? errorAutenticacion}</Text>
+            <Text style={styles.errorText} accessibilityRole="alert">
+              {error ?? errorAutenticacion}
+            </Text>
           ) : null}
 
           <PrimaryButton
@@ -109,7 +117,13 @@ export default function RegisterScreen() {
             style={{ marginTop: 8 }}
             onPress={handleRegister}
           />
-          {cargando && <ActivityIndicator style={{ marginTop: 12 }} color={colors.secondary} />}
+          {cargando && (
+            <ActivityIndicator
+              style={{ marginTop: 12 }}
+              color={colors.secondary}
+              accessibilityLabel="Creando cuenta"
+            />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -129,5 +143,11 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.danger,
     marginBottom: 12,
+  },
+  closeButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

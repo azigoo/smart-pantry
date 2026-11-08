@@ -11,6 +11,7 @@ export function TextField({ label, style, ...inputProps }: Props) {
     <View style={styles.wrapper}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
+        accessibilityLabel={inputProps.accessibilityLabel ?? label ?? inputProps.placeholder}
         placeholderTextColor={colors.inkMuted}
         style={[styles.input, style]}
         {...inputProps}

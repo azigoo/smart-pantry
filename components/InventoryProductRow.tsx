@@ -7,9 +7,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-const DANGER = '#C0392B';
-const WARNING = '#E67E22';
-
 type Props = {
   producto: Producto;
   nombreCategoria: string | null;
@@ -40,19 +37,24 @@ export const InventoryProductRow = memo(function InventoryProductRow({
   if (dias !== null) {
     if (dias < 0) {
       estado = `Caducó hace ${Math.abs(dias)} d`;
-      colorEstado = DANGER;
+      colorEstado = colors.danger;
     } else if (dias === 0) {
       estado = 'Caduca hoy';
-      colorEstado = DANGER;
+      colorEstado = colors.danger;
     } else {
       estado = `Caduca en ${dias} d`;
-      if (dias <= 3) colorEstado = WARNING;
+      if (dias <= 3) colorEstado = colors.warning;
     }
   }
 
   return (
-    <Pressable style={styles.card} onPress={() => onEditar(producto)}>
-      <View style={styles.cardInfo}>
+    <View style={styles.card}>
+      <Pressable
+        style={styles.cardInfo}
+        onPress={() => onEditar(producto)}
+        accessibilityRole="button"
+        accessibilityLabel={`Editar ${producto.nombre}`}
+      >
         <Text style={styles.cardTitle}>
           {producto.nombre}
           {producto.cantidad ? `  ×${producto.cantidad}${producto.unidad ? ` ${producto.unidad}` : ''}` : ''}
@@ -60,18 +62,36 @@ export const InventoryProductRow = memo(function InventoryProductRow({
         {!!nombreCategoria && <Text style={styles.cardCategory}>{nombreCategoria}</Text>}
         <Text style={styles.cardDate}>{formatearFecha(producto.fechaCaducidad)}</Text>
         {!!estado && <Text style={[styles.cardStatus, { color: colorEstado }]}>{estado}</Text>}
-      </View>
+      </Pressable>
 
-      <Pressable style={styles.iconBtn} onPress={() => onSeAcabo(producto)} hitSlop={8}>
+      <Pressable
+        style={styles.iconBtn}
+        onPress={() => onSeAcabo(producto)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Pasar ${producto.nombre} a compras`}
+      >
         <MaterialCommunityIcons name="cart-plus" size={22} color={colors.secondary} />
       </Pressable>
-      <Pressable style={styles.iconBtn} onPress={() => onEditar(producto)} hitSlop={8}>
+      <Pressable
+        style={styles.iconBtn}
+        onPress={() => onEditar(producto)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Editar ${producto.nombre}`}
+      >
         <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.inkMuted} />
       </Pressable>
-      <Pressable style={styles.iconBtn} onPress={() => onEliminar(producto)} hitSlop={8}>
-        <MaterialCommunityIcons name="trash-can-outline" size={22} color={DANGER} />
+      <Pressable
+        style={styles.iconBtn}
+        onPress={() => onEliminar(producto)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Eliminar ${producto.nombre}`}
+      >
+        <MaterialCommunityIcons name="trash-can-outline" size={22} color={colors.danger} />
       </Pressable>
-    </Pressable>
+    </View>
   );
 });
 
@@ -88,7 +108,9 @@ const styles = StyleSheet.create({
   },
   cardInfo: {
     flex: 1,
+    minHeight: 44,
     gap: 2,
+    justifyContent: 'center',
   },
   cardTitle: {
     ...type.body,
@@ -111,7 +133,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   iconBtn: {
-    padding: 6,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 4,
   },
 });
