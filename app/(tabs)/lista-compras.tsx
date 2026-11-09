@@ -9,27 +9,13 @@ import { useDespensa, type Producto } from '@/context/DespensaContext';
 import { aClave } from '@/theme/fechaLocal';
 import type { CategoryId, ItemCompra } from '@/theme/types';
 import { validarItemCompra, validarNuevoProducto } from '@/theme/validators';
-import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { confirmarAccion } from '@/services/platform';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Platform, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const formatearFecha = (d: Date) =>
   d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
-
-// Confirmación que funciona en web y en móvil
-function confirmar(titulo: string, mensaje: string, textoAccion: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.confirm(`${titulo}\n${mensaje}`)) {
-      onConfirm();
-    }
-    return;
-  }
-  Alert.alert(titulo, mensaje, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: textoAccion, style: 'destructive', onPress: onConfirm },
-  ]);
-}
 
 export default function ListaComprasScreen() {
   const {
@@ -142,9 +128,8 @@ export default function ListaComprasScreen() {
     setCompraCantidad(String(Math.max(1, base + delta)));
   }
 
-  const onCambioFecha = (event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS === 'android') setMostrarPicker(false);
-    if (event.type === 'set' && selected) setCompraFecha(selected);
+  const onCambioFecha = (fecha?: Date) => {
+    if (fecha) setCompraFecha(fecha);
   };
 
   function agregarItem() {
@@ -165,16 +150,21 @@ export default function ListaComprasScreen() {
 
   const eliminarItem = useCallback(
     (item: ItemCompra) => {
-      confirmar('Eliminar producto', `¿Quitar "${item.nombre}" de la lista?`, 'Eliminar', () => {
-        setItems((prev) => prev.filter((i) => i.id !== item.id));
-        setMensajeGuardado('Artículo eliminado de la lista. Sincronizando tus cambios.');
-      });
+      confirmarAccion(
+        'Eliminar producto',
+        `¿Quitar "${item.nombre}" de la lista?`,
+        'Eliminar',
+        () => {
+          setItems((prev) => prev.filter((i) => i.id !== item.id));
+          setMensajeGuardado('Artículo eliminado de la lista. Sincronizando tus cambios.');
+        },
+      );
     },
     [setItems],
   );
 
   function limpiarComprados() {
-    confirmar(
+    confirmarAccion(
       'Limpiar comprados',
       `¿Eliminar los ${comprados} productos ya comprados?`,
       'Limpiar',

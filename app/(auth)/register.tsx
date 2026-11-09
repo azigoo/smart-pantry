@@ -7,13 +7,13 @@ import { firebaseEstaConfigurado } from '@/services/firebase';
 import { colors } from '@/theme/colors';
 import { type } from '@/theme/typography';
 import { validarRegistro } from '@/theme/validators';
+import { comportamientoTeclado } from '@/services/platform';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -62,10 +62,7 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior={comportamientoTeclado()} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <ScreenHeader
             title="Crear cuenta"

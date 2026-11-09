@@ -7,13 +7,13 @@ import { firebaseEstaConfigurado } from '@/services/firebase';
 import { colors } from '@/theme/colors';
 import { validarCorreo, validarInicioSesion } from '@/theme/validators';
 import { type } from '@/theme/typography';
+import { comportamientoTeclado } from '@/services/platform';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -119,10 +119,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior={comportamientoTeclado()} style={{ flex: 1 }}>
         <View style={styles.content}>
           <Pressable
             onPress={handleLogoPress}

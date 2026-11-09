@@ -10,11 +10,11 @@ import { getCategoria } from '@/theme/categoryIcons';
 import { aClave, desdeClave } from '@/theme/fechaLocal';
 import type { CategoryId } from '@/theme/types';
 import { validarNuevoProducto } from '@/theme/validators';
+import { confirmarAccion } from '@/services/platform';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const formatearFecha = (clave?: string) => {
@@ -158,17 +158,12 @@ export default function ProductosScreen() {
         setMensajeGuardado('Producto eliminado. Sincronizando tus cambios.');
       };
 
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && window.confirm(`¿Eliminar "${p.nombre}"?`)) {
-          borrar();
-        }
-        return;
-      }
-
-      Alert.alert('Eliminar producto', `¿Seguro que quieres eliminar "${p.nombre}"?`, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: borrar },
-      ]);
+      confirmarAccion(
+        'Eliminar producto',
+        `¿Seguro que quieres eliminar "${p.nombre}"?`,
+        'Eliminar',
+        borrar,
+      );
     },
     [setProductos],
   );
@@ -197,27 +192,19 @@ export default function ProductosScreen() {
         setMensajeGuardado('Producto movido a la lista de compras.');
       };
 
-      if (Platform.OS === 'web') {
-        if (
-          typeof window !== 'undefined' &&
-          window.confirm(`"${p.nombre}" se acabó. ¿Pasarlo a la lista de compras?`)
-        ) {
-          mover();
-        }
-        return;
-      }
-
-      Alert.alert('Se acabó', `¿Pasar "${p.nombre}" a la lista de compras?`, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Pasar a compras', onPress: mover },
-      ]);
+      confirmarAccion(
+        'Se acabó',
+        `¿Pasar "${p.nombre}" a la lista de compras?`,
+        'Pasar a compras',
+        mover,
+        'default',
+      );
     },
     [setListaCompras, setProductos],
   );
 
-  const onCambioFecha = (event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS === 'android') setMostrarPicker(false);
-    if (event.type === 'set' && selected) setFecha(selected);
+  const onCambioFecha = (fechaSeleccionada?: Date) => {
+    if (fechaSeleccionada) setFecha(fechaSeleccionada);
   };
 
   const renderItem = useCallback(

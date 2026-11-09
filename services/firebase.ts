@@ -1,7 +1,7 @@
 import { type FirebaseApp, getApps, initializeApp } from 'firebase/app';
 import { type Auth, getAuth, initializeAuth } from 'firebase/auth';
 import { type Firestore, getFirestore } from 'firebase/firestore';
-import { Platform } from 'react-native';
+import { esWeb } from '@/services/platform';
 
 // Todas las variables deben llevar el prefijo EXPO_PUBLIC_ para que Expo las
 // incluya en el cliente (ver https://docs.expo.dev/guides/environment-variables/).
@@ -47,7 +47,7 @@ export function getFirebaseAuth(): Auth {
   if (!auth) {
     const firebaseApp = getFirebaseApp();
 
-    if (Platform.OS === 'web') {
+    if (esWeb()) {
       auth = getAuth(firebaseApp);
     } else {
       // require() diferido: @react-native-async-storage/async-storage no debe

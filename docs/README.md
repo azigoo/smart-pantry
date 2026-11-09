@@ -16,6 +16,7 @@ adelante.
 | 7 | Validación | [`07-validacion.md`](./07-validacion.md) |
 | 8 | Liberación | [`08-liberacion.md`](./08-liberacion.md) |
 | 9 | Conexión con Firebase (guía práctica) | [`09-conexion-firebase.md`](./09-conexion-firebase.md) |
+| 10 | Modelo de calidad de Boehm (trazabilidad y evidencia) | [`10-modelo-calidad-boehm.md`](./10-modelo-calidad-boehm.md) |
 | 27–35 | Implementación, Git/GitHub, versionado, code review, estándares de código, incidencias, commits, tags, manual técnico | [`27-35-implementacion-y-control-de-versiones.md`](./27-35-implementacion-y-control-de-versiones.md) |
 
 **Nota importante:** los puntos 5 a 8 se escribieron documentando honestamente lo que

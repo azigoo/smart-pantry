@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 import { logger } from '@/services/logger';
+import { esAndroid, notificacionesDisponiblesEnPlataforma } from '@/services/platform';
 
 const CANAL = 'caducidad';
 const HORA_AVISO = 9; // los avisos llegan a las 9:00 am
@@ -14,8 +14,7 @@ type ProductoAviso = {
 
 // En Expo Go (SDK 53+) expo-notifications ya no funciona en Android,
 // y ni siquiera se puede importar sin que truene la app.
-const esExpoGo = Constants.appOwnership === 'expo';
-const disponible = Platform.OS !== 'web' && !(Platform.OS === 'android' && esExpoGo);
+const disponible = notificacionesDisponiblesEnPlataforma(Constants.appOwnership);
 
 let modulo: typeof import('expo-notifications') | null = null;
 let handlerListo = false;
@@ -51,7 +50,7 @@ export function notificacionesDisponibles(): boolean {
 }
 
 async function prepararPermisos(N: typeof import('expo-notifications')): Promise<boolean> {
-  if (Platform.OS === 'android') {
+  if (esAndroid()) {
     await N.setNotificationChannelAsync(CANAL, {
       name: 'Avisos de caducidad',
       importance: N.AndroidImportance.HIGH,

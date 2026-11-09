@@ -73,13 +73,13 @@
 
 ### 6.4 Resultados de pruebas unitarias
 
-Al cierre de la Fase 5 se ejecutaron **34 pruebas** con Jest (`preset: jest-expo`).
+Al cierre de la Fase 6 se ejecutaron **41 pruebas** con Jest (`preset: jest-expo`).
 El primer registro histórico de 17 pruebas corresponde a la Fase 1; la ejecución
 actual incluye además lógica de dominio, notificaciones y componentes:
 
 ```
-Test Suites: 10 passed, 10 total
-Tests:       34 passed, 34 total
+Test Suites: 11 passed, 11 total
+Tests:       41 passed, 41 total
 Snapshots:   0 total
 ```
 
@@ -88,10 +88,10 @@ Snapshots:   0 total
 | Validadores y fechas | `theme/__tests__/validators.test.ts`, `theme/__tests__/fechaLocal.test.ts`, `theme/__tests__/dates.test.ts` | límites de cantidades/nombres, hoy/ayer, formato local y fechas de caducidad aprobados |
 | Notificaciones | `services/__tests__/notificaciones.test.ts` | programación, permisos denegados y aviso de prueba simulados con mocks |
 | Lógica pura del contexto | `context/__tests__/despensaUtils.test.ts` | conteos por categoría, categorías vacías y producto sin categoría aprobados |
-| Componentes | pruebas de `PrimaryButton`, `TextField`, `ProductListItem` y `ShoppingListRow` bajo `components/__tests__/` | acciones, accesibilidad y alternancia de visibilidad de contraseña aprobadas |
+| Componentes y plataforma | pruebas de componentes en `components/__tests__/` y `services/__tests__/platform.test.ts` | acciones accesibles, visibilidad de contraseña y ramas web/Android/iOS aprobadas |
 
-La ejecución `npm run test:coverage -- --runInBand` reportó **87,23 % de sentencias,
-73,97 % de ramas, 88,88 % de funciones y 91,51 % de líneas**. Son porcentajes reales
+La ejecución `npm run test:coverage -- --runInBand` reportó **89,17 % de sentencias,
+79,03 % de ramas, 91,37 % de funciones y 93,03 % de líneas**. Son porcentajes reales
 del informe de Jest; no implican que estén cubiertas todas las rutas de integración.
 `coverage/` se excluye de Git.
 
@@ -280,10 +280,33 @@ pruebas de componentes verifican los contratos accesibles y las acciones del usu
 el campo de contraseña incluye un control accesible para mostrar u ocultar el valor.
 
 `npm run test:coverage -- --runInBand` terminó con 10 suites y 34 pruebas aprobadas.
-El informe real de Jest fue 87,23 % en sentencias y 91,51 % en líneas. La cobertura
+El informe real de Jest de la Fase 5 fue 87,23 % en sentencias, 73,97 % de ramas,
+88,88 % de funciones y 91,51 % de líneas. La cobertura
 no prueba la integración con Firebase, la entrega de notificaciones en un dispositivo
 ni el comportamiento con usuarios reales. No se declaran pruebas de esas condiciones.
 
-Verificación de cierre: `npx tsc --noEmit` finalizó sin errores; `npm run verify`
-finalizó con código 0, ejecutando TypeScript, ESLint (sin errores) y Jest (10 suites,
-34 pruebas aprobadas).
+Verificación de cierre de la Fase 5: `npx tsc --noEmit` finalizó sin errores y
+`npm run verify` finalizó con código 0, ejecutando TypeScript, ESLint y Jest (10
+suites, 34 pruebas aprobadas).
+
+### 6.15 Portabilidad (Fase 6)
+
+Las confirmaciones, avisos del sistema, decisiones de persistencia Firebase, selección
+de fecha, comportamiento del teclado y disponibilidad de notificaciones se derivan
+ahora de `services/platform.tsx`. La lógica de las pantallas no llama directamente a
+`Alert.alert`, `window.confirm` ni `window.alert`. Las notificaciones se mantienen
+deshabilitadas en web y en Expo Go para Android; las pruebas cubren estas reglas con
+plataformas simuladas. El selector usa un `input[type=date]` accesible en web y carga
+el picker nativo bajo demanda en iOS/Android, ya que el componente comunitario no
+declara soporte web ([documentación Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/sdk/ui/drop-in-replacements/datetimepicker/)).
+
+`npx expo export -p web` finalizó correctamente: Metro empaquetó 1.025 módulos y
+exportó a `dist`; el bundle JavaScript web informado fue de 2,8 MB. Esto valida el
+empaquetado web, pero no sustituye una sesión interactiva en navegador ni una prueba
+en dispositivos físicos iOS/Android. No se conectó Firebase real ni se recibieron
+notificaciones de hardware durante esta verificación.
+
+Verificación final de Fase 6: `npx tsc --noEmit` no reportó errores;
+`npm run verify` terminó con código 0 (lint sin diagnósticos y 11 suites/41 pruebas
+aprobadas). Jest midió 89,17 % de sentencias, 79,03 % de ramas, 91,37 % de funciones
+y 93,03 % de líneas.

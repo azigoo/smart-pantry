@@ -6,6 +6,28 @@ versionado sigue [SemVer 2.0.0](https://semver.org/lang/es/) (ver punto 29 del i
 
 ## [Unreleased]
 
+### Agregado
+- Validación de formularios, reglas de Firestore por UID, logger de desarrollo y
+  manejo visible de errores; se conservó el huevo de Pascua del login.
+- Pruebas de límites, fechas locales, notificaciones con mocks, lógica pura y
+  componentes; `npm run verify` integra TypeScript, lint y Jest.
+- `services/platform.tsx` centraliza confirmaciones, avisos y diferencias de
+  comportamiento entre web, Android e iOS.
+- Informe de trazabilidad del modelo de calidad de Boehm en
+  `docs/10-modelo-calidad-boehm.md`.
+
+### Actualizado
+- README con instalación desde cero, configuración Firebase y comandos de
+  verificación/exportación.
+- Se ampliaron los estados accesibles, la modularización de pantallas y la eficiencia
+  de listas; el campo de contraseña ahora permite mostrar/ocultar su valor.
+
+### Verificado
+- `npm run verify`: TypeScript, ESLint y 41 pruebas en 11 suites aprobados.
+- Cobertura Jest: 89,17 % de sentencias, 79,03 % de ramas, 91,37 % de funciones y
+  93,03 % de líneas.
+- `npx expo export -p web`: exportación satisfactoria de 1.025 módulos.
+
 ### Refactorizado
 - Se dividieron las pantallas extensas de productos, compras y perfil en componentes
   especializados, y se trasladaron las operaciones Firestore de la despensa a un servicio.

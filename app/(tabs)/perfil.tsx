@@ -9,29 +9,14 @@ import { logger } from '@/services/logger';
 import { colors } from '@/theme/colors';
 import { diasParaCaducar } from '@/theme/dates';
 import { validarNombrePerfil } from '@/theme/validators';
+import { confirmarAccion, mostrarAviso } from '@/services/platform';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { updateProfile } from 'firebase/auth';
 import { useMemo, useState } from 'react';
 import { enviarAvisoDePrueba } from '@/services/notificaciones';
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-function aviso(titulo: string, mensaje: string) {
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined') window.alert(`${titulo}\n${mensaje}`);
-    return;
-  }
-  Alert.alert(titulo, mensaje);
-}
 
 export default function PerfilScreen() {
   const { usuario, firebaseListo, errorAutenticacion } = useAuth();
@@ -113,7 +98,7 @@ export default function PerfilScreen() {
   }
   async function probarAviso() {
     const ok = await enviarAvisoDePrueba();
-    aviso(
+    mostrarAviso(
       ok ? 'Aviso programado' : 'No disponible',
       ok
         ? 'Llegará en unos 5 segundos. Si quieres verlo, minimiza la app.'
@@ -122,16 +107,12 @@ export default function PerfilScreen() {
   }
 
   function confirmarCierre() {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm('¿Quieres cerrar tu sesión?')) {
-        ejecutarCierreDeSesion();
-      }
-      return;
-    }
-    Alert.alert('Cerrar sesión', '¿Quieres cerrar tu sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar sesión', style: 'destructive', onPress: ejecutarCierreDeSesion },
-    ]);
+    confirmarAccion(
+      'Cerrar sesión',
+      '¿Quieres cerrar tu sesión?',
+      'Cerrar sesión',
+      ejecutarCierreDeSesion,
+    );
   }
 
   return (

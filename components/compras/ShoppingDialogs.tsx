@@ -1,13 +1,12 @@
 import { ErrorMessage } from '@/components/ErrorMessage';
 import type { CategoriaConConteo } from '@/context/DespensaContext';
+import { comportamientoTeclado, SelectorFechaPlataforma } from '@/services/platform';
 import { colors } from '@/theme/colors';
 import type { CategoryId, ItemCompra } from '@/theme/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -41,10 +40,7 @@ export function ShoppingEditDialog({
 }: EditDialogProps) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.modalOverlay} behavior={comportamientoTeclado()}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} accessible={false} />
         <View style={styles.modalSheet}>
           <Text style={styles.modalTitle}>Editar producto</Text>
@@ -125,7 +121,7 @@ type PantryDialogProps = {
   onAjustarCantidad: (delta: number) => void;
   onCategoriaChange: (categoria: CategoryId | null) => void;
   onMostrarPickerChange: (mostrar: boolean) => void;
-  onCambioFecha: (event: DateTimePickerEvent, selected?: Date) => void;
+  onCambioFecha: (fecha?: Date) => void;
   onSoloMarcar: () => void;
   onAgregar: () => void;
   formatearFecha: (fecha: Date) => string;
@@ -151,10 +147,7 @@ export function PurchaseToPantryDialog({
 }: PantryDialogProps) {
   return (
     <Modal visible={item !== null} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.modalOverlay} behavior={comportamientoTeclado()}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} accessible={false} />
         <View style={[styles.modalSheet, { maxHeight: '90%' }]}>
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -223,11 +216,12 @@ export function PurchaseToPantryDialog({
             </Pressable>
 
             {mostrarPicker && (
-              <DateTimePicker
+              <SelectorFechaPlataforma
+                visible
                 value={fecha}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                accessibilityLabel="Fecha de caducidad"
                 onChange={onCambioFecha}
+                onClose={() => onMostrarPickerChange(false)}
               />
             )}
 

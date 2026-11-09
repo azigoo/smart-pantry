@@ -1,15 +1,8 @@
 import { ErrorMessage } from '@/components/ErrorMessage';
+import { comportamientoTeclado } from '@/services/platform';
 import { colors } from '@/theme/colors';
 import { styles } from './perfilStyles';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 type Props = {
   visible: boolean;
@@ -32,10 +25,7 @@ export function EditarNombreModal({
 }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.modalOverlay} behavior={comportamientoTeclado()}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} accessible={false} />
         <View style={styles.modalSheet}>
           <Text style={styles.modalTitle}>Editar nombre</Text>

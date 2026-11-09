@@ -1,13 +1,12 @@
 import { ErrorMessage } from '@/components/ErrorMessage';
 import { colors } from '@/theme/colors';
 import { aClave } from '@/theme/fechaLocal';
+import { comportamientoTeclado, SelectorFechaPlataforma } from '@/services/platform';
 import type { CategoryId } from '@/theme/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -36,7 +35,7 @@ type Props = {
   onUnidadChange: (unidad: string) => void;
   onCategoriaChange: (categoria: CategoryId | null) => void;
   onMostrarPickerChange: (mostrar: boolean) => void;
-  onCambioFecha: (event: DateTimePickerEvent, selected?: Date) => void;
+  onCambioFecha: (fecha?: Date) => void;
   onAjustarCantidad: (delta: number) => void;
   onGuardar: () => void;
   formatearFecha: (clave?: string) => string;
@@ -66,10 +65,7 @@ export function ProductoFormModal({
 }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.modalOverlay} behavior={comportamientoTeclado()}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} accessible={false} />
         <View style={styles.modalSheet}>
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -166,11 +162,12 @@ export function ProductoFormModal({
             </Pressable>
 
             {mostrarPicker && (
-              <DateTimePicker
+              <SelectorFechaPlataforma
+                visible
                 value={fecha}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                accessibilityLabel="Fecha de caducidad"
                 onChange={onCambioFecha}
+                onClose={() => onMostrarPickerChange(false)}
               />
             )}
 
