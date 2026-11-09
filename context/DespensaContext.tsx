@@ -1,4 +1,5 @@
 import { useAuth } from '@/context/AuthContext';
+import { contarProductosPorCategoria, type CategoriaConConteo } from '@/context/despensaUtils';
 import {
   observarListaCompras,
   observarProductos,
@@ -11,7 +12,7 @@ import {
   listaCompras as listaMock,
   productos as productosMock,
 } from '@/theme/mockData';
-import type { Category, CategoryId, ItemCompra, Producto as ProductoModelo } from '@/theme/types';
+import type { CategoryId, ItemCompra, Producto as ProductoModelo } from '@/theme/types';
 import { logger } from '@/services/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -26,9 +27,8 @@ import {
 } from 'react';
 
 export type Producto = ProductoModelo;
-type Categoria = Category;
 
-export type CategoriaConConteo = Categoria & { cantidad: number };
+export type { CategoriaConConteo } from '@/context/despensaUtils';
 export type DiasAviso = 1 | 3 | 7;
 
 type DespensaContextValue = {
@@ -238,11 +238,7 @@ export function DespensaProvider({ children }: { children: ReactNode }) {
 
   // El conteo de cada categoría se calcula a partir de los productos actuales
   const categorias = useMemo<CategoriaConConteo[]>(
-    () =>
-      categoriasMock.map((c) => ({
-        ...c,
-        cantidad: productos.filter((p) => p.categoria === c.id).length,
-      })),
+    () => contarProductosPorCategoria(categoriasMock, productos),
     [productos],
   );
 

@@ -73,26 +73,30 @@
 
 ### 6.4 Resultados de pruebas unitarias
 
-Se implementaron y ejecutaron **17 pruebas unitarias** con Jest (`preset: jest-expo`)
-sobre la lógica pura del proyecto (`theme/`). Resultado observado en la Fase 1:
+Al cierre de la Fase 5 se ejecutaron **34 pruebas** con Jest (`preset: jest-expo`).
+El primer registro histórico de 17 pruebas corresponde a la Fase 1; la ejecución
+actual incluye además lógica de dominio, notificaciones y componentes:
 
 ```
-PASS theme/__tests__/validators.test.ts
-PASS theme/__tests__/dates.test.ts
-PASS theme/__tests__/categoryIcons.test.ts
-
-Test Suites: 3 passed, 3 total
-Tests:       17 passed, 17 total
+Test Suites: 10 passed, 10 total
+Tests:       34 passed, 34 total
 Snapshots:   0 total
 ```
 
-| Archivo de prueba | Caso de prueba | Requisito | Casos cubiertos | Resultado |
-|---|---|---|---|---|
-| `theme/__tests__/validators.test.ts` | CP-01 | RU-01 / RF-06 | Nombre, cantidad, calendario, fecha pasada, límites y validación de login, registro, perfil y lista de compras | 11/11 aprobadas |
-| `theme/__tests__/dates.test.ts` | CP-05 | RU-05 / RF-11 | Días para caducar (fecha futura y vencida), formateo de fecha ISO a DD/MM/AAAA | 4/4 aprobadas |
-| `theme/__tests__/categoryIcons.test.ts` | CP-08 | RU-08 / RF-12 | Búsqueda de categoría existente, categoría de respaldo ante un id inválido | 2/2 aprobadas |
+| Área | Evidencia automatizada | Resultado |
+|---|---|---|
+| Validadores y fechas | `theme/__tests__/validators.test.ts`, `theme/__tests__/fechaLocal.test.ts`, `theme/__tests__/dates.test.ts` | límites de cantidades/nombres, hoy/ayer, formato local y fechas de caducidad aprobados |
+| Notificaciones | `services/__tests__/notificaciones.test.ts` | programación, permisos denegados y aviso de prueba simulados con mocks |
+| Lógica pura del contexto | `context/__tests__/despensaUtils.test.ts` | conteos por categoría, categorías vacías y producto sin categoría aprobados |
+| Componentes | pruebas de `PrimaryButton`, `TextField`, `ProductListItem` y `ShoppingListRow` bajo `components/__tests__/` | acciones, accesibilidad y alternancia de visibilidad de contraseña aprobadas |
 
-**Cómo ejecutarlas:** `npm test` (equivalente a `npx jest`) desde la raíz del proyecto.
+La ejecución `npm run test:coverage -- --runInBand` reportó **87,23 % de sentencias,
+73,97 % de ramas, 88,88 % de funciones y 91,51 % de líneas**. Son porcentajes reales
+del informe de Jest; no implican que estén cubiertas todas las rutas de integración.
+`coverage/` se excluye de Git.
+
+**Cómo ejecutarlas:** `npm test` desde la raíz del proyecto. Para generar cobertura,
+ejecutar `npm run test:coverage`.
 
 ---
 
@@ -266,3 +270,20 @@ reportó cero errores y cero advertencias. `npx tsc --noEmit` finalizó sin erro
 `theme/mockData.ts` se conserva porque sigue alimentando el modo demo, el catálogo
 de categorías, la pantalla alternativa de alta de producto y la prueba de iconos de
 categoría. No es un archivo obsoleto que pueda eliminarse en esta fase.
+
+### 6.14 Capacidad de prueba (Fase 5)
+
+Se ampliaron las pruebas de fronteras de validación y fechas locales, se cubrió la
+lógica pura de conteo que consume `DespensaContext`, y se aislaron las notificaciones
+con mocks para no solicitar permisos ni comunicarse con el sistema operativo. Las
+pruebas de componentes verifican los contratos accesibles y las acciones del usuario;
+el campo de contraseña incluye un control accesible para mostrar u ocultar el valor.
+
+`npm run test:coverage -- --runInBand` terminó con 10 suites y 34 pruebas aprobadas.
+El informe real de Jest fue 87,23 % en sentencias y 91,51 % en líneas. La cobertura
+no prueba la integración con Firebase, la entrega de notificaciones en un dispositivo
+ni el comportamiento con usuarios reales. No se declaran pruebas de esas condiciones.
+
+Verificación de cierre: `npx tsc --noEmit` finalizó sin errores; `npm run verify`
+finalizó con código 0, ejecutando TypeScript, ESLint (sin errores) y Jest (10 suites,
+34 pruebas aprobadas).

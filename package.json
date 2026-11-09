@@ -26,6 +26,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.1.0",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
@@ -43,8 +44,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "lint": "expo lint",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json}\"",
+    "verify": "tsc --noEmit && npm run lint && npm test"
   },
   "jest": {
     "preset": "jest-expo",

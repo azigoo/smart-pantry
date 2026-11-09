@@ -79,6 +79,43 @@ describe('validarNuevoProducto (RF-06 / RU-01: registro de productos)', () => {
       validarNuevoProducto({ nombre: 'Leche', cantidad: '100000', fecha: fechaFutura }).valido,
     ).toBe(false);
   });
+
+  it('rechaza cantidades negativas, fraccionarias y en blanco', () => {
+    for (const cantidad of ['-1', '1.5', '']) {
+      expect(validarNuevoProducto({ nombre: 'Leche', cantidad, fecha: fechaFutura }).valido).toBe(
+        false,
+      );
+    }
+  });
+
+  it('acepta la fecha de hoy y rechaza el día anterior', () => {
+    const hoy = new Date();
+    const fechaFormatoLocal = (fecha: Date) =>
+      `${String(fecha.getDate()).padStart(2, '0')}/${String(fecha.getMonth() + 1).padStart(2, '0')}/${fecha.getFullYear()}`;
+    const hoyLocal = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const ayer = new Date(hoyLocal);
+    ayer.setDate(ayer.getDate() - 1);
+
+    expect(
+      validarNuevoProducto({
+        nombre: 'Leche',
+        cantidad: '1',
+        fecha: fechaFormatoLocal(hoyLocal),
+      }).valido,
+    ).toBe(true);
+    expect(
+      validarNuevoProducto({
+        nombre: 'Leche',
+        cantidad: '1',
+        fecha: fechaFormatoLocal(ayer),
+      }).valido,
+    ).toBe(false);
+  });
+
+  it('rechaza nombres que superan el límite de longitud', () => {
+    expect(validarNombrePerfil('a'.repeat(80)).valido).toBe(true);
+    expect(validarNombrePerfil('a'.repeat(81)).valido).toBe(false);
+  });
 });
 
 describe('validación de los demás formularios', () => {
